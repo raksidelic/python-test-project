@@ -1,3 +1,4 @@
+import logging
 import allure
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -7,6 +8,9 @@ from config import Config
 class BasePage:
     def __init__(self, driver):
         self.driver = driver
+        # BEST PRACTICE: Class ismini alarak dinamik logger oluşturur.
+        # Örn: LoginPage kullanıyorsa loglarda [LoginPage] yazar.
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def find(self, locator):
         return WebDriverWait(self.driver, Config.TIMEOUT).until(
@@ -17,6 +21,8 @@ class BasePage:
     def click(self, locator):
         self.find(locator).click()
         self.take_screenshot(f"Tıklandı: {locator}")
+        # --- LOGLAMA ---
+        self.logger.info(f"TIKLANDI: {locator}")
 
     @allure.step("Metin yazılıyor: {text}")
     def send_text(self, locator, text):
@@ -24,9 +30,16 @@ class BasePage:
         element.clear()
         element.send_keys(text)
         self.take_screenshot(f"Yazıldı: {text}")
+        
+        # --- LOGLAMA (Şifre Maskeleme) ---
+        # Eğer locator isminde 'password' geçiyorsa log dosyasına ***** yaz
+        log_text = "*****" if "password" in str(locator).lower() else text
+        self.logger.info(f"YAZILDI: '{log_text}' -> {locator}")
 
     def get_url(self):
-        return self.driver.current_url
+        url = self.driver.current_url
+        self.logger.info(f"URL ALINDI: {url}")
+        return url
 
     # --- YARDIMCI METOD ---
     def take_screenshot(self, name):

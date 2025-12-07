@@ -1,26 +1,54 @@
 import pytest
 import allure
 import os
+import logging
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from config import Config
 
+# --- GÜRÜLTÜ ENGELLEME (WDM LOGLARINI SUSTURMA) ---
+# WebDriver Manager'ın gereksiz loglarını kapatır
+os.environ['WDM_LOG'] = "0"
+logging.getLogger("WDM").setLevel(logging.WARNING)
+
 # 1. DRIVER AYARLARI
 @pytest.fixture(scope="function")
 def driver(request):
-    service = ChromeService(ChromeDriverManager().install())
-    options = webdriver.ChromeOptions()
-    options.add_argument("--start-maximized")
+    # Remote URL kontrolü (Docker/Selenoid için)
+    remote_url = os.getenv("SELENIUM_REMOTE_URL")
     
-    # --- HEADLESS AYARI (DİNAMİK) ---
-    # Eğer .env dosyasında HEADLESS=true ise arkaplanda çalıştır
-    if os.getenv("HEADLESS") == "true":
-        options.add_argument("--headless")
-        # Headless modda ekran boyutu hatası almamak için sabit boyut verilir
+    # --- SENARYO A: REMOTE (DOCKER) ---
+    if remote_url:
+        print(f"\n[SETUP] Remote WebDriver'a bağlanılıyor: {remote_url}")
+        options = webdriver.ChromeOptions()
+        # Docker içinde pencere boyutu önemlidir, aksi halde elementler görünmeyebilir
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--start-maximized")
+        # Shared Memory sorununu aşmak için
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--no-sandbox")
+        
+        driver = webdriver.Remote(
+            command_executor=remote_url,
+            options=options
+        )
+
+    # --- SENARYO B: LOCAL (SENİN BİLGİSAYARIN) ---
+    else:
+        print(f"\n[SETUP] Local WebDriver başlatılıyor ({'HEADLESS' if os.getenv('HEADLESS') == 'true' else 'GUI'})...")
+        service = ChromeService(ChromeDriverManager().install())
+        options = webdriver.ChromeOptions()
+        options.add_argument("--start-maximized")
+        
+        # Headless Ayarı (Sadece Local için geçerli, Docker zaten headless gibidir)
+        if os.getenv("HEADLESS") == "true":
+            options.add_argument("--headless")
+            options.add_argument("--window-size=1920,1080")
+            
+        driver = webdriver.Chrome(service=service, options=options)
     
-    driver = webdriver.Chrome(service=service, options=options)
+    # Ortak Bekleme Süresi
     driver.implicitly_wait(Config.TIMEOUT)
     
     yield driver
@@ -39,6 +67,7 @@ def driver(request):
     
     driver.quit()
 
+# 2. KRİTİK KANCA (HOOK)
 # Bu fonksiyon, testin sonucunu (Passed/Failed) yakalar ve yukarıdaki fixture'a haber verir.
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):

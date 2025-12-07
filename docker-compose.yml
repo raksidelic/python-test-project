@@ -1,0 +1,36 @@
+services:
+  # 1. TEST KOŞUCUSU (Senin Kodların)
+  finom-tests:
+    build: .
+    container_name: finom-test-runner
+    environment:
+      # Remote Browser'a bağlan
+      - SELENIUM_REMOTE_URL=http://chrome-browser:4444/wd/hub
+      # Global DB'yi kullan (Kodun içindeki Config bunu algılayacak)
+      - DOCKER_ENV=true
+      # .env dosyasındaki değerleri ezmek istersen buraya yazabilirsin
+      - BASE_URL=https://www.saucedemo.com
+    volumes:
+      # Raporları dışarı aktar ki görebilelim
+      - ./allure-results:/app/allure-results
+      - ./logs:/app/logs
+    depends_on:
+      - chrome-browser
+    networks:
+      - shared-network
+
+  # 2. TARAYICI (Apple Silicon Uyumlu Seleniarm)
+  chrome-browser:
+    # KRİTİK DEĞİŞİKLİK: 'selenium/standalone-chrome' yerine 'seleniarm/standalone-chromium'
+    image: seleniarm/standalone-chromium:latest
+    container_name: finom-chrome
+    shm_size: 2gb # Browser çökmemesi için bellek ayarı
+    ports:
+      - "4444:4444" # Dışarıdan izlemek istersen (http://localhost:4444)
+    networks:
+      - shared-network
+
+# 3. AĞ (Global DB'ye erişim için)
+networks:
+  shared-network:
+    external: true
