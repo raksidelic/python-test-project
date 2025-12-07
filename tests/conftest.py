@@ -9,15 +9,20 @@ from config import Config
 # 1. DRIVER AYARLARI
 @pytest.fixture(scope="function")
 def driver(request):
-    # Setup
     service = ChromeService(ChromeDriverManager().install())
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
     
+    # --- HEADLESS AYARI (DİNAMİK) ---
+    # Eğer .env dosyasında HEADLESS=true ise arkaplanda çalıştır
+    if os.getenv("HEADLESS") == "true":
+        options.add_argument("--headless")
+        # Headless modda ekran boyutu hatası almamak için sabit boyut verilir
+        options.add_argument("--window-size=1920,1080")
+    
     driver = webdriver.Chrome(service=service, options=options)
     driver.implicitly_wait(Config.TIMEOUT)
     
-    # Test Fonksiyonuna Driver'ı Gönder
     yield driver
     
     # --- TEARDOWN (TEST BİTİŞİ) ---
@@ -34,7 +39,6 @@ def driver(request):
     
     driver.quit()
 
-# 2. KRİTİK KANCA (HOOK) - BURASI OLMAZSA SCREENSHOT ÇALIŞMAZ
 # Bu fonksiyon, testin sonucunu (Passed/Failed) yakalar ve yukarıdaki fixture'a haber verir.
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):

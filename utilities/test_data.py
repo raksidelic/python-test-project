@@ -1,15 +1,17 @@
+from utilities.constants import ErrorMessages
+
 class TestData:
-    # --- POZİTİF SENARYOLAR İÇİN KULLANICILAR ---
+    # --- POZİTİF SENARYOLAR ---
     VALID_USERS = [
         ("standard_user", "secret_sauce"),
         ("problem_user", "secret_sauce"),
         ("performance_glitch_user", "secret_sauce")
     ]
 
-    # --- NEGATİF SENARYOLAR (HATA BEKLENEN) ---
-    # Format: (Kullanıcı Adı, Şifre, Beklenen Hata Mesajı)
+    # --- NEGATİF SENARYOLAR ---
+    # Artık string yok, değişken referansı var!
     INVALID_LOGIN_DATA = [
-        ("locked_out_user", "secret_sauce", "Epic sadface: Sorry, this user has been locked out."),
-        ("standard_user", "yanlis_sifre", "Epic sadface: Username and password do not match any user in this service"),
-        ("olmayan_kullanici", "secret_sauce", "Epic sadface: Username and password do not match any user in this service")
+        ("locked_out_user", "secret_sauce", ErrorMessages.LOCKED_OUT_ERROR),
+        ("standard_user", "yanlis_sifre", ErrorMessages.INVALID_CRED_ERROR),
+        ("olmayan_kullanici", "secret_sauce", ErrorMessages.INVALID_CRED_ERROR)
     ]
