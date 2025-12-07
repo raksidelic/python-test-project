@@ -1,0 +1,19 @@
+# --- Python Derleme Dosyaları ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Test Çıktıları ve Raporlar ---
+.pytest_cache/
+reports/
+screenshots/
+*.log
+*.html
+
+# --- Ortam ve Editör ---
+venv_finom/
+venv/
+.env
+.vscode/
+.idea/
+.DS_Store
