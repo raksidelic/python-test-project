@@ -4,47 +4,64 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # Veritabanı Adresi
       - ARANGO_URL=http://arangoDB:8529
-      
-      # Selenoid/Chrome Adresi
-      - SELENIUM_REMOTE_URL=http://chrome-browser:4444/wd/hub
-      
-      # Config Ayarları
+      - SELENIUM_REMOTE_URL=http://selenium-hub:4444/wd/hub
+      # Default browser
+      - BROWSER=${BROWSER:-chrome}
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
-    
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
-    
     depends_on:
-      chrome-browser:
-        condition: service_healthy # Browser "Healthy" olana kadar bekle!
-    
+      selenium-hub:
+        condition: service_healthy
     networks:
       - shared-network
 
-  # 2. TARAYICI (Apple Silicon Uyumlu Seleniarm)
-  chrome-browser:
-    image: seleniarm/standalone-chromium:latest
-    container_name: pytest-chrome
-    shm_size: 2gb
+  # 2. YÖNETİCİ (HUB)
+  selenium-hub:
+    image: selenium/hub:latest
+    container_name: selenium-hub
     ports:
       - "4444:4444"
-    
-    # Bu kontrol, browser'ın 4444 portunun hazır olup olmadığını denetler.
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
-      interval: 5s
+      interval: 10s
       timeout: 10s
       retries: 5
-      start_period: 5s
-    
     networks:
       - shared-network
 
-# 3. AĞ
+  # 3. NODE: CHROME (Tek Tanım - İstenildiği kadar çoğaltılabilir)
+  chrome-browser:
+    image: seleniarm/node-chromium:latest
+    shm_size: 2gb
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=2
+    depends_on:
+      - selenium-hub
+    networks:
+      - shared-network
+
+  # 4. NODE: FIREFOX (Tek Tanım)
+  firefox-browser:
+    image: seleniarm/node-firefox:latest
+    shm_size: 2gb
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=2
+    depends_on:
+      - selenium-hub
+    networks:
+      - shared-network
+
+# 5. AĞ
 networks:
   shared-network:
     external: true

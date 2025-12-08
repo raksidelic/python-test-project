@@ -1,6 +1,5 @@
 pytest
 selenium
-webdriver-manager
 requests
 python-dotenv
 allure-pytest
