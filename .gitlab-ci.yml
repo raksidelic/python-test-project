@@ -5,8 +5,10 @@ stages:
 variables:
   RECORD_VIDEO: "on_failure"
   TAKE_SCREENSHOT: "true"
-  # Docker Host'u direkt soket olarak gösteriyoruz (Kritik!)
+  # Docker Host Ayarı
   DOCKER_HOST: unix:///var/run/docker.sock
+  # --- YENİ EKLENEN SATIR ---
+  BROWSER: "chrome"
 
 # Test Koşumu
 run_tests:

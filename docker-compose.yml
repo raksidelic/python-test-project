@@ -6,9 +6,13 @@ services:
     environment:
       - ARANGO_URL=http://arangoDB:8529
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
-      - BROWSER=${BROWSER:-chrome}
+      # Sadece değişkeni al, varsayılan değer mantığını kaldırdık
+      - BROWSER=${BROWSER} 
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
+      # Diğer ortam değişkenlerini de buraya çekiyoruz (Conftest için gerekli)
+      - RECORD_VIDEO=${RECORD_VIDEO}
+      - TAKE_SCREENSHOT=${TAKE_SCREENSHOT}
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
