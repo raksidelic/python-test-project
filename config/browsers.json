@@ -1,21 +1,23 @@
 {
     "chrome": {
-        "default": "120.0",
+        "default": "latest",
         "versions": {
-            "120.0": {
-                "image": "selenoid/vnc:chrome_120.0",
+            "latest": {
+                "image": "seleniarm/node-chromium:latest",
                 "port": "4444",
-                "path": "/"
+                "path": "/",
+                "env": ["SE_EVENT_BUS_HOST=selenoid", "SE_EVENT_BUS_PORT=4442", "SE_NODE_MAX_SESSIONS=1", "SE_NODE_OVERRIDE_MAX_SESSIONS=true"]
             }
         }
     },
     "firefox": {
-        "default": "120.0",
+        "default": "latest",
         "versions": {
-            "120.0": {
-                "image": "selenoid/vnc:firefox_120.0",
+            "latest": {
+                "image": "seleniarm/node-firefox:latest",
                 "port": "4444",
-                "path": "/wd/hub"
+                "path": "/wd/hub",
+                "env": ["SE_EVENT_BUS_HOST=selenoid", "SE_EVENT_BUS_PORT=4442", "SE_NODE_MAX_SESSIONS=1", "SE_NODE_OVERRIDE_MAX_SESSIONS=true"]
             }
         }
     }
