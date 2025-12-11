@@ -3,28 +3,28 @@ stages:
   - report
 
 variables:
-  # Senin bilgisayarında çalışacağı için video ve screenshot'ı açabiliriz
   RECORD_VIDEO: "on_failure"
   TAKE_SCREENSHOT: "true"
+  # Docker Host'u direkt soket olarak gösteriyoruz (Kritik!)
+  DOCKER_HOST: unix:///var/run/docker.sock
 
 # Test Koşumu
 run_tests:
   stage: test
   tags:
-    - mac-m3-runner # BU ETİKET ÇOK ÖNEMLİ (Aşağıda tanımlayacağız)
+    - mac-m3-runner # GitLab arayüzünde bu tag'i verdiğinden emin ol!
+  image: docker/compose:latest
+  
+  # DİKKAT: 'services: - docker:dind' ARTIK YOK!
   
   script:
-    # 1. Temizlik ve Hazırlık
     - docker-compose down --remove-orphans || true
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
-    # 2. M3 uyumlu video kaydediciyi garantiye al
     - docker pull selenoid/video-recorder:latest-release
-    # 3. Testleri Başlat
     - docker-compose up --build --exit-code-from pytest-tests
 
   after_script:
-    # İş bitince sistemi kapat ama dosyalar kalsın
     - docker-compose down
 
   artifacts:
@@ -34,7 +34,7 @@ run_tests:
       - videos/
     expire_in: 3 days
 
-# Rapor Oluşturma
+# Rapor
 generate_report:
   stage: report
   image: frankescobar/allure-docker-service
