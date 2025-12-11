@@ -6,13 +6,12 @@ services:
     environment:
       - ARANGO_URL=http://arangoDB:8529
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
-      # Sadece değişkeni al, varsayılan değer mantığını kaldırdık
-      - BROWSER=${BROWSER} 
-      - DOCKER_ENV=true 
-      - BASE_URL=https://www.saucedemo.com
-      # Diğer ortam değişkenlerini de buraya çekiyoruz (Conftest için gerekli)
+      # GitLab'den gelen değişkenler
+      - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
       - TAKE_SCREENSHOT=${TAKE_SCREENSHOT}
+      - DOCKER_ENV=true 
+      - BASE_URL=https://www.saucedemo.com
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
@@ -32,9 +31,7 @@ services:
       - ./videos:/opt/selenoid/video
       - ./logs:/opt/selenoid/logs
     environment:
-      # Mac dosya izni hatasını çözen satır
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    # --- DÜZELTME: Resmi ve çalışan imaja geri döndük ---
     command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "shared-network"]
     ports:
       - "4444:4444"
@@ -54,6 +51,9 @@ services:
     networks:
       - shared-network
 
+# --- KRİTİK DÜZELTME BURADA ---
+# 'external: true' YERİNE 'driver: bridge' KULLANIYORUZ
+# Böylece CI/CD ortamında ağ otomatik oluşturulur.
 networks:
   shared-network:
-    external: true
+    driver: bridge
