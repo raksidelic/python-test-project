@@ -6,7 +6,10 @@ variables:
   RECORD_VIDEO: "on_failure"
   TAKE_SCREENSHOT: "true"
   BROWSER: "chrome"
-  # DOCKER_HOST'a shell executor'da gerek yok ama kalsa da zarar vermez
+  # --- DÜZELTME: Bu değişkenleri ortamdan alıp içeri aktarıyoruz ---
+  ARANGO_DB_NAME: $ARANGO_DB_NAME
+  ARANGO_USER: $ARANGO_USER
+  ARANGO_PASSWORD: $ARANGO_PASSWORD
 
 run_tests:
   stage: test
@@ -18,13 +21,13 @@ run_tests:
     - docker-compose down --remove-orphans || true
     - docker rm -f selenoid selenoid-ui pytest-test-runner || true
     
-    # 2. Ağı Elle Oluştur (Kritik Adım!)
+    # 2. Ağı Hazırla (Hata verirse yoksay, varsa kullansın)
     - docker network create shared-network || true
     
-    # 3. ArangoDB'yi bu ağa bağla (Böylece testler onu görebilir)
+    # 3. ArangoDB'yi bu ağa bağla (Çok önemli!)
     - docker network connect shared-network arangoDB || true
     
-    # 4. Klasör ve İzinler
+    # 4. Hazırlık
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
     - docker pull selenoid/video-recorder:latest-release
