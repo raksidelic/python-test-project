@@ -16,17 +16,18 @@ run_tests:
     - mac-m3-runner
   
   script:
-    # 1. Temizlik (Çok önemli, eski ağ kalıntılarını siler)
+    # 1. GÜVENLİ Temizlik (Sadece ilgili konteynerleri siler)
     - docker-compose down --remove-orphans || true
     - docker rm -f selenoid selenoid-ui pytest-test-runner || true
-    - docker network rm shared-network || true 
+    # Sadece Selenoid'in açtığı video kaydedicileri temizle (ArangoDB'ye dokunmaz)
+    - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
     
     # 2. Hazırlık
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
     - docker pull selenoid/video-recorder:latest-release
     
-    # 3. Başlat (Ağı ve her şeyi Docker Compose halledecek)
+    # 3. Başlat
     - docker-compose up --build --exit-code-from pytest-tests
 
   after_script:
