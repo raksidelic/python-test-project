@@ -4,13 +4,19 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # Mac üzerindeki DB'ye (host) erişim (Ağ ismi değişse de bu çalışır)
+      # --- BAĞLANTI AYARI ---
+      # Konteynerden -> Mac'e (Host) erişim
       - ARANGO_URL=http://host.docker.internal:8529
-      # GitLab'den gelen şifreler
+      
+      # --- KİMLİK BİLGİLERİ (CRITICAL FIX) ---
+      # Config dosyan hangisini kullanıyorsa ikisini de gönderiyoruz
+      - ARANGO_DB=${ARANGO_DB_NAME}
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
+      
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
-      # Diğer ayarlar
+      # ---------------------------------------
+      
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
@@ -18,19 +24,17 @@ services:
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
     
-    # DNS Köprüsü (Hala şart)
+    # DNS Köprüsü (Bunu silme, bu sayede host.docker.internal çalışır)
     extra_hosts:
       - "host.docker.internal:host-gateway"
       
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
+    # --network parametresi yok, compose kendi default ağını kullansın
     command: ["pytest", "-n", "4", "--dist=loadscope", "--alluredir=allure-results", "--clean-alluredir"]
     depends_on:
       - selenoid
-    # --- YENİ AĞ İSMİ ---
-    networks:
-      - automation-network
 
   # 2. SELENOID
   selenoid:
@@ -43,12 +47,9 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    # Komuttaki network ismini de güncelledik!
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "automation-network", "-service-startup-timeout", "2m"]
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
-    networks:
-      - automation-network
 
   # 3. SELENOID UI
   selenoid-ui:
@@ -59,12 +60,3 @@ services:
     ports:
       - "8080:8080"
     command: ["--selenoid-uri", "http://selenoid:4444", "--period", "2s"]
-    networks:
-      - automation-network
-
-# --- AĞ AYARI (YENİ İSİM) ---
-# Artık eski ağ ile çakışmayacak
-networks:
-  automation-network:
-    name: automation-network
-    driver: bridge
