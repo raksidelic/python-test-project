@@ -1,56 +1,57 @@
-version: '3.8'
+stages:
+  - test
+  - report
 
-services:
-  # 1. TEST KOŞUCUSU
-  pytest-tests:
-    build: .
-    container_name: pytest-test-runner
-    environment:
-      - ARANGO_URL=http://arangoDB:8529
-      - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
-      - BROWSER=${BROWSER}
-      - RECORD_VIDEO=${RECORD_VIDEO}
-      - TAKE_SCREENSHOT=${TAKE_SCREENSHOT}
-      - DOCKER_ENV=true 
-      - BASE_URL=https://www.saucedemo.com
-    volumes:
-      - ./allure-results:/app/allure-results
-      - ./logs:/app/logs
-    command: ["pytest", "-n", "4", "--dist=loadscope", "--alluredir=allure-results", "--clean-alluredir"]
-    depends_on:
-      - selenoid
-    networks:
-      - shared-network
+variables:
+  RECORD_VIDEO: "on_failure"
+  TAKE_SCREENSHOT: "true"
+  DOCKER_HOST: unix:///var/run/docker.sock
+  BROWSER: "chrome"
 
-  # 2. SELENOID
-  selenoid:
-    image: aerokube/selenoid:latest-release
-    container_name: selenoid
-    volumes:
-      - ./config:/etc/selenoid
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./videos:/opt/selenoid/video
-      - ./logs:/opt/selenoid/logs
-    environment:
-      - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "shared-network"]
-    ports:
-      - "4444:4444"
-    networks:
-      - shared-network
+# Test Koşumu
+run_tests:
+  stage: test
+  tags:
+    - mac-m3-runner
+  image: docker/compose:latest
+  
+  script:
+    # --- GÜÇLENDİRİLMİŞ TEMİZLİK ---
+    # Önce Compose ile kapatmayı dene
+    - docker-compose down --remove-orphans || true
+    # Sonra isim çakışması yapan konteynerleri manuel olarak ZORLA sil (En garanti yöntem)
+    - docker rm -f selenoid selenoid-ui pytest-test-runner || true
+    
+    # Hazırlık
+    - mkdir -p videos allure-results logs
+    - chmod -R 777 videos allure-results logs
+    - docker pull selenoid/video-recorder:latest-release
+    
+    # Başlat
+    - docker-compose up --build --exit-code-from pytest-tests
 
-  # 3. SELENOID UI
-  selenoid-ui:
-    image: aerokube/selenoid-ui:latest-release
-    container_name: selenoid-ui
-    depends_on:
-      - selenoid
-    ports:
-      - "8080:8080"
-    command: ["--selenoid-uri", "http://selenoid:4444", "--period", "2s"]
-    networks:
-      - shared-network
+  after_script:
+    - docker-compose down
 
-networks:
-  shared-network:
-    driver: bridge
+  artifacts:
+    when: always
+    paths:
+      - allure-results/
+      - videos/
+    expire_in: 3 days
+
+# Rapor (Aynı kalıyor)
+generate_report:
+  stage: report
+  image: frankescobar/allure-docker-service
+  tags:
+    - mac-m3-runner
+  script:
+     - allure generate -c allure-results -o allure-report
+  artifacts:
+    paths:
+      - allure-report/
+    expire_in: 1 week
+  needs:
+    - run_tests
+  when: always
