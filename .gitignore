@@ -5,6 +5,7 @@ __pycache__/
 
 # --- Test Çıktıları ve Raporlar ---
 .pytest_cache/
+videos/
 allure-results/
 logs/
 *.log
