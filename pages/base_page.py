@@ -1,3 +1,5 @@
+# pages/base_page.py:
+
 import logging
 import allure
 from selenium.webdriver.support.ui import WebDriverWait

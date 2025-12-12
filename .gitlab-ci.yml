@@ -1,3 +1,5 @@
+# .gitlab-ci.yml:
+
 stages:
   - test
   - report

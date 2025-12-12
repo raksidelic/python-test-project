@@ -1,3 +1,5 @@
+# Dockerfile:
+
 FROM python:3.14
 
 # Çalışma klasörü
