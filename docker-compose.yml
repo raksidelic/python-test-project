@@ -6,12 +6,16 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # --- ARTIK KONTEYNER İSMİYLE BAĞLANACAK ---
+      # --- BAĞLANTI AYARLARI ---
       - ARANGO_URL=http://arangoDB:8529
-      # ------------------------------------------
+      
+      # Config dosyanın ne beklediğini garantiye almak için ikisini de gönderiyoruz
+      - ARANGO_DB=${ARANGO_DB_NAME}
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
+      
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
+      # -------------------------
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
@@ -22,8 +26,21 @@ services:
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
-    # Bekleme komutunu sildik, direkt testi çalıştırıyoruz
-    command: ["pytest", "-n", "4", "--dist=loadscope", "--alluredir=allure-results", "--clean-alluredir"]
+    
+    # --- İŞTE ÇÖZÜM BURASI ---
+    # Pytest başlamadan önce ArangoDB'nin 8529 portunun cevap vermesini bekliyoruz.
+    # Böylece test_data.py çalıştığında bağlantı %100 hazır oluyor.
+    command: >
+      sh -c "
+        echo 'ArangoDB bağlantısı kontrol ediliyor...'
+        until python -c 'import socket; s=socket.socket(); s.settimeout(1); s.connect((\"arangoDB\", 8529)); s.close();' 2>/dev/null; do
+          echo 'DB henüz cevap vermiyor, bekleniyor...'
+          sleep 1
+        done
+        echo 'DB Bağlantısı HAZIR! Testler başlıyor...'
+        pytest -n 4 --dist=loadscope --alluredir=allure-results --clean-alluredir
+      "
+      
     depends_on:
       - selenoid
     networks:
@@ -58,9 +75,8 @@ services:
     networks:
       - test-network
 
-# --- AĞ AYARI ---
-# External YOK. Docker kendi kursun, adı 'test-network' olsun.
+# Ağ Ayarı (Değişmedi, external olarak kullanıyoruz)
 networks:
   test-network:
     name: test-network
-    driver: bridge
+    external: true
