@@ -8,7 +8,7 @@ db = DBClient()
 class TestData:
     VALID_USERS = [
         ("standard_user", "secret_sauce"),
-        ("probl2em_user", "sec2ret_sauce"),
+        ("problem_user", "secret_sauce"),
         ("performance_glitch_user", "secret_sauce")
     ]
 
