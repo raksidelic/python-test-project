@@ -1,12 +1,14 @@
+version: '3.8'
+
 services:
   # 1. TEST KOŞUCUSU
   pytest-tests:
     build: .
     container_name: pytest-test-runner
     environment:
-      # --- KESİN ÇÖZÜM: Konteyner ismiyle direkt bağlantı ---
+      # --- ARTIK KONTEYNER İSMİYLE BAĞLANACAK ---
       - ARANGO_URL=http://arangoDB:8529
-      # ----------------------------------------------------
+      # ------------------------------------------
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
@@ -21,19 +23,32 @@ services:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
     
-    # --- BEKLEME KOMUTU ---
-    # test_data.py çalışmadan önce DB'nin hazır olduğundan emin oluyoruz.
+    # --- DEBUG KOMUTLARI EKLENDİ ---
     command: >
       sh -c "
-        echo 'ArangoDB (http://arangoDB:8529) bağlantısı bekleniyor...'
-        until python -c 'import socket; s=socket.socket(); s.settimeout(2); s.connect((\"arangoDB\", 8529)); s.close();' 2>/dev/null; do
-          echo 'DB henüz cevap vermiyor, bekleniyor...'
-          sleep 1
-        done
-        echo 'DB BAĞLANTISI KURULDU! Testler başlatılıyor...'
+        echo '---------------------------------------------------'
+        echo '🔍 AĞ VE BAĞLANTI ANALİZİ BAŞLIYOR...'
+        
+        echo '1. Ortam Değişkenleri Kontrolü:'
+        env | grep ARANGO
+        
+        echo '2. DNS Çözümleme Testi (arangoDB):'
+        getent hosts arangoDB || echo '❌ DNS ÇÖZÜLEMEDİ!'
+        
+        echo '3. Ping Testi:'
+        ping -c 2 arangoDB || echo '❌ PING BAŞARISIZ!'
+        
+        echo '4. CURL Testi (En Önemlisi):'
+        # ArangoDB versiyon endpointine istek atıyoruz. 
+        # Eğer bu çalışırsa ağ %100 sağlamdır.
+        curl -v --connect-timeout 5 http://arangoDB:8529/_api/version || echo '❌ CURL BAŞARISIZ! Port kapalı veya erişilemiyor.'
+        
+        echo '---------------------------------------------------'
+        echo '🚀 TESTLER BAŞLIYOR...'
+        
         pytest -n 4 --dist=loadscope --alluredir=allure-results --clean-alluredir
       "
-    
+      
     depends_on:
       - selenoid
     networks:
@@ -69,7 +84,7 @@ services:
       - qa-network
 
 # --- AĞ AYARI ---
-# Ağı CI scripti oluşturdu, biz sadece bağlanıyoruz.
 networks:
   qa-network:
+    name: qa-network
     external: true

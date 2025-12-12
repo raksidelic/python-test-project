@@ -6,7 +6,6 @@ variables:
   RECORD_VIDEO: "on_failure"
   TAKE_SCREENSHOT: "true"
   BROWSER: "chrome"
-  # GitLab'den gelen şifreleri buraya alıyoruz
   ARANGO_DB_NAME: $ARANGO_DB_NAME
   ARANGO_USER: $ARANGO_USER
   ARANGO_PASSWORD: $ARANGO_PASSWORD
@@ -17,32 +16,37 @@ run_tests:
     - mac-m3-runner
   
   script:
-    # 1. Temizlik (Sadece test konteynerlerini sil, DB kalsın)
+    # 1. Temizlik
     - docker-compose down --remove-orphans || true
     - docker rm -f selenoid selenoid-ui pytest-test-runner || true
-    # Selenoid'in oluşturduğu geçici konteynerleri temizle
     - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
+    - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-chromium:latest) || true
     
-    # 2. İmajları Hazırla
+    # 2. İmajları İndir
     - docker pull selenoid/video-recorder:latest-release
     - docker pull seleniarm/standalone-chromium:latest
+    - docker pull seleniarm/standalone-firefox:latest
     
-    # --- KRİTİK ADIM: ORTAK AĞ KURULUMU ---
-    # Ağı oluştur (Hata verirse yoksay, zaten vardır)
+    # 3. Ağı Yönet
     - docker network create qa-network || true
     
-    # Senin çalışan ArangoDB konteynerini bu ağa bağla
-    # (Zaten bağlıysa hata verir, || true ile devam ederiz)
+    # 4. ArangoDB Bağla
     - docker network connect qa-network arangoDB || true
     
-    # 3. Klasörler
+    # 5. Hazırlık
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
     
-    # 4. Başlat
+    # 6. Başlat
     - docker-compose up --build --exit-code-from pytest-tests
 
   after_script:
+    # --- DEBUG: AĞ DURUMUNU GÖSTER ---
+    - echo "🛑 DOCKER AĞ DETAYLARI (DEBUG İÇİN):"
+    - docker network inspect qa-network || true
+    - echo "🛑 ARANGO KONTEYNER DURUMU:"
+    - docker inspect arangoDB || true
+    # ---------------------------------
     - docker-compose down
 
   artifacts:
