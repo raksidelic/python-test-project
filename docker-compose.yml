@@ -22,7 +22,7 @@ services:
     depends_on:
       - selenoid
     networks:
-      - qa-network
+      - shared-network
 
   # 2. SELENOID
   selenoid:
@@ -35,11 +35,11 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "qa-network", "-service-startup-timeout", "2m"]
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "shared-network", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
     networks:
-      - qa-network
+      - shared-network
 
   # 3. SELENOID UI
   selenoid-ui:
@@ -51,7 +51,7 @@ services:
       - "8080:8080"
     command: ["--selenoid-uri", "http://selenoid:4444", "--period", "2s"]
     networks:
-      - qa-network
+      - shared-network
 
 # --- AĞ AYARI ---
 networks:
