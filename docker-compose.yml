@@ -4,27 +4,43 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # --- KESİN ÇÖZÜM: Konteyner ismini kullanıyoruz ---
-      - ARANGO_URL=http://arangoDB:8529
-      # ------------------------------------------------
+      # Mac üzerindeki DB'ye (host) erişim
+      - ARANGO_URL=http://host.docker.internal:8529
+      # GitLab'den gelen şifreler
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
+      # Diğer ayarlar
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
       - TAKE_SCREENSHOT=${TAKE_SCREENSHOT}
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
+    
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
       
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
-    command: ["pytest", "-n", "4", "--dist=loadscope", "--alluredir=allure-results", "--clean-alluredir"]
+    
     depends_on:
       - selenoid
-    networks:
-      - qa-network
+
+    # --- KESİN ÇÖZÜM BURASI ---
+    # Pytest'i başlatmadan önce DB portuna (8529) ping atıp bekliyoruz.
+    # Böylece test_data.py çalıştığında bağlantı hazır oluyor.
+    command: >
+      sh -c "
+        echo 'ArangoDB bağlantısı bekleniyor...'
+        until python -c 'import socket; s=socket.socket(); s.settimeout(1); s.connect((\"host.docker.internal\", 8529)); s.close();' 2>/dev/null; do
+          echo 'DB henüz hazır değil, bekleniyor...'
+          sleep 1
+        done
+        echo 'ArangoDB hazır! Testler başlıyor...'
+        pytest -n 4 --dist=loadscope --alluredir=allure-results --clean-alluredir
+      "
 
   # 2. SELENOID
   selenoid:
@@ -37,12 +53,9 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    # Tarayıcıları da 'qa-network' içinde aç diyoruz
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "qa-network", "-service-startup-timeout", "2m"]
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
-    networks:
-      - qa-network
 
   # 3. SELENOID UI
   selenoid-ui:
@@ -53,11 +66,3 @@ services:
     ports:
       - "8080:8080"
     command: ["--selenoid-uri", "http://selenoid:4444", "--period", "2s"]
-    networks:
-      - qa-network
-
-# --- KRİTİK AYAR ---
-# Bu ağı biz oluşturduk (Adım 1), Compose sadece kullansın.
-networks:
-  qa-network:
-    external: true
