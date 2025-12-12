@@ -4,19 +4,13 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # --- BAĞLANTI AYARI ---
-      # Konteynerden -> Mac'e (Host) erişim
+      # Mac'teki ArangoDB'ye erişim
       - ARANGO_URL=http://host.docker.internal:8529
-      
-      # --- KİMLİK BİLGİLERİ (CRITICAL FIX) ---
-      # Config dosyan hangisini kullanıyorsa ikisini de gönderiyoruz
-      - ARANGO_DB=${ARANGO_DB_NAME}
+      # GitLab'den gelen şifreler
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
-      
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
-      # ---------------------------------------
-      
+      # Diğer ayarlar
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
@@ -24,17 +18,18 @@ services:
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
     
-    # DNS Köprüsü (Bunu silme, bu sayede host.docker.internal çalışır)
+    # DB erişimi için köprü
     extra_hosts:
       - "host.docker.internal:host-gateway"
       
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
-    # --network parametresi yok, compose kendi default ağını kullansın
     command: ["pytest", "-n", "4", "--dist=loadscope", "--alluredir=allure-results", "--clean-alluredir"]
     depends_on:
       - selenoid
+    networks:
+      - test-network
 
   # 2. SELENOID
   selenoid:
@@ -47,9 +42,13 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-service-startup-timeout", "2m"]
+    # --- KRİTİK DÜZELTME BURADA ---
+    # -container-network test-network diyerek tarayıcıyı zorla bizim ağımıza sokuyoruz.
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "test-network", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
+    networks:
+      - test-network
 
   # 3. SELENOID UI
   selenoid-ui:
@@ -60,3 +59,11 @@ services:
     ports:
       - "8080:8080"
     command: ["--selenoid-uri", "http://selenoid:4444", "--period", "2s"]
+    networks:
+      - test-network
+
+# --- AĞ AYARI (SABİT İSİM) ---
+networks:
+  test-network:
+    name: test-network
+    driver: bridge
