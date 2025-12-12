@@ -13,8 +13,8 @@ class TestData:
     ]
 
     # Dinamik Veri: ArangoDB'den geliyor
-    INVALID_LOGIN_DATA = [
-        ("locked_out_user", "secret_sauce", db.get_error_message('LOCKED')),
-        ("standard_user", "yanlis_sifre", db.get_error_message('INVALID')),
-        ("olmayan_kullanici", "secret_sauce", db.get_error_message('INVALID'))
+INVALID_LOGIN_DATA = [
+        ("locked_out_user", "secret_sauce", "Epic sadface: Sorry, this user has been locked out."),
+        ("standard_user", "yanlis_sifre", "Epic sadface: Username and password do not match any user in this service"),
+        ("olmayan_kullanici", "secret_sauce", "Epic sadface: Username and password do not match any user in this service")
     ]
