@@ -1,12 +1,3 @@
-# utilities/test_data.py:
-
-from utilities.db_client import DBClient
-
-# DB Bağlantısını başlat
-# Not: Testler çok hızlı koşarsa her seferinde bağlanmak yerine
-# bu client bir Singleton veya Fixture olarak da tasarlanabilir.
-db = DBClient()
-
 class TestData:
     VALID_USERS = [
         ("standard_user", "secret_sauce"),
@@ -14,9 +5,11 @@ class TestData:
         ("performance_glitch_user", "secret_sauce")
     ]
 
-    # Dinamik Veri: ArangoDB'den geliyor
+    # Dinamik yapı için değişiklik:
+    # Artık burada DB çağrısı yapılmıyor. Sadece Hata Kodları (Key) tutuluyor.
+    # Yapı: (username, password, error_key)
     INVALID_LOGIN_DATA = [
-        ("locked_out_user", "secret_sauce", db.get_error_message('LOCKED')),
-        ("standard_user", "yanlis_sifre", db.get_error_message('INVALID')),
-        ("olmayan_kullanici", "secret_sauce", db.get_error_message('INVALID'))
+        ("locked_out_user", "secret_sauce", "LOCKED"),
+        ("standard_user", "yanlis_sifre", "INVALID"),
+        ("olmayan_kullanici", "secret_sauce", "INVALID")
     ]

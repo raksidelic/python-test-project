@@ -1,96 +1,85 @@
-# tests/conftest.py:
-
 import pytest
 import allure
-import os
-import time
 import requests
+import time
 import logging
-from selenium import webdriver
 from config import Config
+from utilities.driver_factory import DriverFactory
+from utilities.db_client import DBClient
 
+# Gereksiz logları sustur
 logging.getLogger("selenium").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-@pytest.fixture(scope="function")
-def driver(request):
-    remote_url = os.getenv("SELENIUM_REMOTE_URL")
-    browser_name = os.getenv("BROWSER", "chrome").lower()
-    headless = os.getenv("HEADLESS") == "true"
-    
-    # Video dosya adı
-    video_name = f"{request.node.name}.mp4".replace(" ", "_")
-
-    driver = None
-    options = None
-
-    if remote_url:
-        print(f"\n[SETUP] Selenoid Remote: {browser_name.upper()}")
-        
-        if browser_name == "chrome":
-            options = webdriver.ChromeOptions()
-        elif browser_name == "firefox":
-            options = webdriver.FirefoxOptions()
-        else:
-            options = webdriver.ChromeOptions()
-
-        # --- SELENOID AYARLARI ---
-        selenoid_options = {
-            "enableVNC": True,
-            "enableVideo": True,       # Video AÇIK
-            "videoName": video_name,   # Dosya adı sabitlendi
-            "name": request.node.name
-        }
-        options.set_capability("selenoid:options", selenoid_options)
-        
-        options.add_argument("--window-size=1920,1080")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-
-        driver = webdriver.Remote(command_executor=remote_url, options=options)
-
-    else:
-        # Local
-        options = webdriver.ChromeOptions()
-        options.add_argument("--start-maximized")
-        driver = webdriver.Chrome(options=options)
-
-    driver.implicitly_wait(Config.TIMEOUT)
-    yield driver
-    
-    # --- TEARDOWN ---
-    
-    # 1. Hata varsa Screenshot al (Screenshot sadece hatada kalsın)
-    if request.node.rep_call.failed:
-        try:
-            allure.attach(driver.get_screenshot_as_png(), name="Hata_Screenshot", attachment_type=allure.attachment_type.PNG)
-        except:
-            pass
-
-    # 2. Önce Tarayıcıyı Kapat (Video kaydının bitmesi için şart!)
-    driver.quit()
-
-    # 3. Video Rapora Ekleme (HER DURUMDA: PASS veya FAIL)
-    if remote_url:
-        # Video dosyasının diske yazılması için kısa bekleme
-        time.sleep(3) 
-        
-        video_url = f"http://selenoid:4444/video/{video_name}"
-        
-        try:
-            print(f"[REPORT] Video indiriliyor: {video_url}")
-            response = requests.get(video_url, timeout=5)
-            
-            if response.status_code == 200:
-                # Başarılı veya Hatalı fark etmeksizin ekle
-                allure.attach(response.content, name="Test Kaydı (Video)", attachment_type=allure.attachment_type.MP4)
-            else:
-                print(f"[UYARI] Video bulunamadı (Status: {response.status_code})")
-        except Exception as e:
-            print(f"[HATA] Video eklenirken sorun oluştu: {e}")
-
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
+    """Test sonucunu (Pass/Fail) report objesine ekler."""
     outcome = yield
     rep = outcome.get_result()
     setattr(item, "rep_" + rep.when, rep)
+
+@pytest.fixture(scope="session")
+def db_client():
+    """
+    Tüm test session'ı boyunca yaşayacak DB bağlantı nesnesi.
+    Dependency Injection ile testlere aktarılır.
+    """
+    client = DBClient()
+    yield client
+    client.close()
+
+@pytest.fixture(scope="function")
+def driver(request):
+    """
+    Driver Factory kullanarak tarayıcıyı ayağa kaldırır.
+    Test bitiminde kapatır ve video/screenshot işlemlerini yönetir.
+    """
+    test_name = request.node.name
+    
+    # Factory üzerinden driver iste
+    driver_instance = DriverFactory.get_driver(Config, test_name)
+    
+    # Implicit Wait (Global Timeout)
+    driver_instance.implicitly_wait(Config.TIMEOUT)
+    
+    # Teste driver'ı ver
+    yield driver_instance
+    
+    # --- TEARDOWN (Test Bitişi) ---
+    
+    # 1. Hata varsa Screenshot al
+    if hasattr(request.node, "rep_call") and request.node.rep_call.failed:
+        try:
+            allure.attach(
+                driver_instance.get_screenshot_as_png(), 
+                name="Fail_Screenshot", 
+                attachment_type=allure.attachment_type.PNG
+            )
+            print(f"[Teardown] Hata screenshot'ı alındı: {test_name}")
+        except Exception as e:
+            print(f"[Teardown] Screenshot hatası: {e}")
+
+    # 2. Driver'ı kapat (Video'nun finalize olması için şart)
+    driver_instance.quit()
+    
+    # 3. Selenoid Video Kaydını Rapora Ekle
+    if Config.is_remote():
+        video_filename = f"{test_name}.mp4".replace(" ", "_")
+        video_url = f"http://selenoid:4444/video/{video_filename}"
+        
+        # Selenoid'in videoyu diske yazması için minik bekleme
+        time.sleep(2) 
+        
+        try:
+            # Video var mı kontrol et
+            response = requests.get(video_url, timeout=5)
+            if response.status_code == 200:
+                allure.attach(
+                    response.content, 
+                    name="Test Kaydı (Video)", 
+                    attachment_type=allure.attachment_type.MP4
+                )
+            else:
+                print(f"[Teardown] Video henüz hazır değil veya bulunamadı: {video_url}")
+        except Exception as e:
+            print(f"[Teardown] Video ekleme hatası: {e}")
