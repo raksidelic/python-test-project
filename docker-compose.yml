@@ -1,24 +1,15 @@
-version: '3.8'
-
 services:
   # 1. TEST KOŞUCUSU
   pytest-tests:
     build: .
     container_name: pytest-test-runner
     environment:
-      # --- BAĞLANTI AYARLARI ---
-      # Konteyner ismini kullanarak bağlanıyoruz
+      # --- KESİN ÇÖZÜM: Konteyner ismiyle direkt bağlantı ---
       - ARANGO_URL=http://arangoDB:8529
-      
-      # --- KRİTİK: Değişken Eşleşmesi ---
-      # Config dosyanın ne beklediğini bilmediğimiz için (ARANGO_DB mi ARANGO_DB_NAME mi?)
-      # ikisini de gönderiyoruz.
-      - ARANGO_DB=${ARANGO_DB_NAME}
+      # ----------------------------------------------------
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
-      
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
-      # -------------------------
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
@@ -30,27 +21,23 @@ services:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
     
-    # --- ÇÖZÜM: BAĞLANTI + BEKLEME ---
-    # 1. Soket açılana kadar bekle.
-    # 2. Soket açıldıktan sonra 5 saniye daha bekle (DB Auth sistemi otursun).
-    # 3. Sonra testleri başlat.
+    # --- BEKLEME KOMUTU ---
+    # test_data.py çalışmadan önce DB'nin hazır olduğundan emin oluyoruz.
     command: >
       sh -c "
-        echo 'ArangoDB bağlantısı kontrol ediliyor...'
-        until python -c 'import socket; s=socket.socket(); s.settimeout(1); s.connect((\"arangoDB\", 8529)); s.close();' 2>/dev/null; do
-          echo 'DB portu henüz açılmadı, bekleniyor...'
+        echo 'ArangoDB (http://arangoDB:8529) bağlantısı bekleniyor...'
+        until python -c 'import socket; s=socket.socket(); s.settimeout(2); s.connect((\"arangoDB\", 8529)); s.close();' 2>/dev/null; do
+          echo 'DB henüz cevap vermiyor, bekleniyor...'
           sleep 1
         done
-        echo 'Port açık! DB servisinin tam başlaması için 5 saniye bekleniyor...'
-        sleep 5
-        echo 'Testler başlatılıyor...'
+        echo 'DB BAĞLANTISI KURULDU! Testler başlatılıyor...'
         pytest -n 4 --dist=loadscope --alluredir=allure-results --clean-alluredir
       "
-      
+    
     depends_on:
       - selenoid
     networks:
-      - automation-network
+      - qa-network
 
   # 2. SELENOID
   selenoid:
@@ -63,11 +50,11 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "automation-network", "-service-startup-timeout", "2m"]
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "qa-network", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
     networks:
-      - automation-network
+      - qa-network
 
   # 3. SELENOID UI
   selenoid-ui:
@@ -79,10 +66,10 @@ services:
       - "8080:8080"
     command: ["--selenoid-uri", "http://selenoid:4444", "--period", "2s"]
     networks:
-      - automation-network
+      - qa-network
 
-# Ağ Ayarı: External kullanıyoruz ki mevcut ağa bağlansın
+# --- AĞ AYARI ---
+# Ağı CI scripti oluşturdu, biz sadece bağlanıyoruz.
 networks:
-  automation-network:
-    name: automation-network
+  qa-network:
     external: true
