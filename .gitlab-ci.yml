@@ -34,8 +34,8 @@ run_tests:
     - cat .env # Debug için (Şifreleri logda maskeli gösterebilir veya açık yazabilir, dikkat)
     
     # 3. Ağ Ayarı (Hata verirse yoksay)
-    - docker network create qa-network || true
-    - docker network connect qa-network arangoDB || true
+    - docker network create shared-network || true
+    - docker network connect shared-network arangoDB || true
     
     # 4. Klasörler
     - mkdir -p videos allure-results logs
