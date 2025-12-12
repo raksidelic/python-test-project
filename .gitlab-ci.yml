@@ -16,25 +16,27 @@ run_tests:
     - mac-m3-runner
   
   script:
-    # 1. Sadece test konteynerlerini sil (DB ve Network KALACAK)
+    # 1. Temizlik
     - docker-compose down --remove-orphans || true
     - docker rm -f selenoid selenoid-ui pytest-test-runner || true
-    # Selenoid artıklarını temizle
-    - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
-    - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-chromium:latest) || true
+    # Eski ağ kalıntısı varsa sil (Çakışmayı önlemek için)
+    - docker network rm test-network || true 
     
-    # 2. İmajları Güncelle
+    # 2. İmajları Hazırla
     - docker pull selenoid/video-recorder:latest-release
     - docker pull seleniarm/standalone-chromium:latest
+    - docker pull seleniarm/standalone-firefox:latest
     
-    # 3. Garanti: ArangoDB'yi tekrar ağa bağla (Zaten bağlıysa hata verir geçer, sorun yok)
-    - docker network connect qa-network arangoDB || true
+    # --- SİHİRLİ ADIMLAR ---
     
-    # 4. Hazırlık
-    - mkdir -p videos allure-results logs
-    - chmod -R 777 videos allure-results logs
+    # 3. Önce Selenoid'i başlat (Bu adım 'test-network' ağını otomatik oluşturur)
+    - docker-compose up -d selenoid
     
-    # 5. Başlat
+    # 4. ArangoDB'yi, az önce oluşan 'test-network' ağına bağla
+    # (Böylece testler 'http://arangoDB:8529' diyerek ona ulaşabilir)
+    - docker network connect test-network arangoDB || true
+    
+    # 5. Şimdi Testleri Başlat
     - docker-compose up --build --exit-code-from pytest-tests
 
   after_script:
