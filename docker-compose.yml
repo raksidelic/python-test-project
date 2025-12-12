@@ -20,6 +20,9 @@ services:
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
+            # Docker Socket'i bağlıyoruz ki pytest container'ı kardeş container'ları silebilsin
+      - /var/run/docker.sock:/var/run/docker.sock
+
     
     depends_on:
       - selenoid

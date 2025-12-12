@@ -7,3 +7,4 @@ python-dotenv
 allure-pytest
 python-arango
 pytest-xdist
+docker
