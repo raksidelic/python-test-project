@@ -16,16 +16,25 @@ run_tests:
     - mac-m3-runner
   
   script:
-    # 1. Sadece Kendi Konteynerlerini Temizle
+    # 1. Sadece test konteynerlerini sil (DB ve Network KALACAK)
     - docker-compose down --remove-orphans || true
     - docker rm -f selenoid selenoid-ui pytest-test-runner || true
+    # Selenoid artıklarını temizle
+    - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
+    - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-chromium:latest) || true
     
-    # 2. İmajları İndir (M3 Hatası almamak için)
+    # 2. İmajları Güncelle
     - docker pull selenoid/video-recorder:latest-release
     - docker pull seleniarm/standalone-chromium:latest
-    - docker pull seleniarm/standalone-firefox:latest
     
-    # 3. Başlat (Otomatik olarak 'automation-network' kurulacak)
+    # 3. Garanti: ArangoDB'yi tekrar ağa bağla (Zaten bağlıysa hata verir geçer, sorun yok)
+    - docker network connect qa-network arangoDB || true
+    
+    # 4. Hazırlık
+    - mkdir -p videos allure-results logs
+    - chmod -R 777 videos allure-results logs
+    
+    # 5. Başlat
     - docker-compose up --build --exit-code-from pytest-tests
 
   after_script:

@@ -4,23 +4,18 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # Mac'teki ArangoDB'ye erişim
-      - ARANGO_URL=http://host.docker.internal:8529
-      # GitLab'den gelen şifreler
+      # --- KESİN ÇÖZÜM: Konteyner ismini kullanıyoruz ---
+      - ARANGO_URL=http://arangoDB:8529
+      # ------------------------------------------------
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
-      # Diğer ayarlar
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
       - TAKE_SCREENSHOT=${TAKE_SCREENSHOT}
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
-    
-    # DB erişimi için köprü
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
       
     volumes:
       - ./allure-results:/app/allure-results
@@ -29,7 +24,7 @@ services:
     depends_on:
       - selenoid
     networks:
-      - test-network
+      - qa-network
 
   # 2. SELENOID
   selenoid:
@@ -42,13 +37,12 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    # --- KRİTİK DÜZELTME BURADA ---
-    # -container-network test-network diyerek tarayıcıyı zorla bizim ağımıza sokuyoruz.
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "test-network", "-service-startup-timeout", "2m"]
+    # Tarayıcıları da 'qa-network' içinde aç diyoruz
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "qa-network", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
     networks:
-      - test-network
+      - qa-network
 
   # 3. SELENOID UI
   selenoid-ui:
@@ -60,10 +54,10 @@ services:
       - "8080:8080"
     command: ["--selenoid-uri", "http://selenoid:4444", "--period", "2s"]
     networks:
-      - test-network
+      - qa-network
 
-# --- AĞ AYARI (SABİT İSİM) ---
+# --- KRİTİK AYAR ---
+# Bu ağı biz oluşturduk (Adım 1), Compose sadece kullansın.
 networks:
-  test-network:
-    name: test-network
-    driver: bridge
+  qa-network:
+    external: true
