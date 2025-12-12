@@ -55,6 +55,5 @@ services:
 
 # --- AĞ AYARI ---
 networks:
-  qa-network:
-    name: qa-network
+  shared-network:
     external: true
