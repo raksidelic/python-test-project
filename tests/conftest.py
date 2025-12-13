@@ -1,6 +1,7 @@
 import pytest
 import allure
 import requests
+import docker
 import time
 import logging
 from config import Config
@@ -17,6 +18,47 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     rep = outcome.get_result()
     setattr(item, "rep_" + rep.when, rep)
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_video_containers():
+    """
+    Test session bitiminde 'selenoid/video-recorder' imajına sahip
+    tüm container'ları (çalışan veya durmuş) temizler.
+    """
+    yield  # Tüm testlerin bitmesini bekle
+
+    print("\n[Cleanup] Video recorder temizliği başlıyor...")
+    
+    try:
+        # Docker client'ı başlat (Environment variable'lardan veya sock dosyasından okur)
+        client = docker.from_env()
+        
+        # Selenoid video recorder imajını kullanan containerları filtrele
+        # Not: Image tag'i docker-compose.yml'daki ile aynı olmalı
+        recorder_containers = client.containers.list(
+            all=True, 
+            filters={"ancestor": "selenoid/video-recorder:latest-release"}
+        )
+        
+        if not recorder_containers:
+            print("[Cleanup] Silinecek video recorder container'ı bulunamadı.")
+            return
+
+        print(f"[Cleanup] {len(recorder_containers)} adet video container'ı bulundu ve siliniyor...")
+        
+        for container in recorder_containers:
+            try:
+                # Force=True ile çalışıyor olsa bile siler
+                container.remove(force=True)
+                print(f"[Cleanup] Container silindi: {container.name} ({container.short_id})")
+            except Exception as e:
+                print(f"[Cleanup] Silme hatası ({container.name}): {e}")
+                
+    except Exception as e:
+        print(f"[Cleanup] Docker API Hatası: {e}")
+        print("[Cleanup] NOT: Docker socket'in bağlı olduğundan emin olun (/var/run/docker.sock)")
+
+
 
 @pytest.fixture(scope="session")
 def db_client():
