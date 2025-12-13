@@ -1,59 +1,59 @@
-# .gitlab-ci.yml:
-
 stages:
   - test
   - report
 
 variables:
+  # GitLab Settings'den gelenler dışında:
+  PYTHONDONTWRITEBYTECODE: "1"
+  # after_script'in boş kalıp hata vermemesi için varsayılan bir değer:
+  BROWSERS_JSON: "browsers_intel.json"
+  # Video kaydı ayarları (start_tests.py içindeki mantıkla uyumlu çalışır)
   RECORD_VIDEO: "on_failure"
   TAKE_SCREENSHOT: "true"
-  BROWSER: "chrome"
-  # Bu değişkenler GitLab Settings'den geliyor
 
 run_tests:
   stage: test
+  image: docker:latest
   tags:
     - mac-m3-runner
-  
+
   script:
-    # 1. Temizlik
-    - docker-compose down --remove-orphans || true
-    - docker rm -f selenoid selenoid-ui pytest-test-runner || true
-    # Selenoid artıklarını temizle
-    - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
-    - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-chromium:latest) || true
-    
-    # 2. İmajları Hazırla
-    - docker pull selenoid/video-recorder:latest-release
-    - docker pull seleniarm/standalone-chromium:latest
-    
-    # --- KESİN ÇÖZÜM: .env DOSYASI OLUŞTURMA ---
-    # Değişkenleri elle dosyaya yazıyoruz ki Docker bunları 'string' olarak değil 'değer' olarak görsün.
-    - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" > .env
+    # 1. BAĞIMLILIKLARI YÜKLE (Python Hatasının Çözümü)
+    # docker:latest imajı boştur, içine python3 ve docker-compose kuruyoruz.
+    - apk add --no-cache python3 py3-pip docker-compose
+
+    # 2. ORTAM (.env) DOSYASINI HAZIRLA (Stabil sürümden alındı)
+    - echo "ARANGO_URL=http://arangoDB:8529" > .env
+    - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" >> .env
     - echo "ARANGO_USER=$ARANGO_USER" >> .env
     - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
-    - echo "Ortam dosyası oluşturuldu:"
-    - cat .env # Debug için (Şifreleri logda maskeli gösterebilir veya açık yazabilir, dikkat)
+    - echo "Ortam dosyası oluşturuldu."
     
-    # 3. Ağ Ayarı (Hata verirse yoksay)
+    # 3. AĞ AYARLARI (Stabil sürümden alındı - Kritik!)
+    # Dışarıdaki 'arangoDB' container'ını test ağına bağlıyoruz.
     - docker network create shared-network || true
     - docker network connect shared-network arangoDB || true
     
-    # 4. Klasörler
+    # 4. KLASÖR İZİNLERİ
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
     
-    # 5. Başlat
-    - docker-compose up --build --exit-code-from pytest-tests
+    # 5. AKILLI BAŞLATMA 🚀
+    # - İşlemci mimarisini algılar (ARM vs Intel)
+    # - Doğru imajları (Seleniarm vs Selenoid) indirir
+    # - docker-compose up komutunu çalıştırır ve test sonucunu bildirir
+    - python3 start_tests.py
 
   after_script:
-    - docker-compose down
+    # Test bitince temizlik yap (Varsayılan değişken ile çalışır)
+    - docker-compose down --remove-orphans
 
   artifacts:
     when: always
     paths:
       - allure-results/
       - videos/
+      - logs/
     expire_in: 3 days
 
 generate_report:
