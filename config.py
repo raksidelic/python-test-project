@@ -1,3 +1,5 @@
+# config.py:
+
 import os
 from dotenv import load_dotenv
 
@@ -14,6 +16,10 @@ class Config:
     BROWSER = os.getenv("BROWSER", "chrome").lower()
     HEADLESS = os.getenv("HEADLESS", "false").lower() == "true"
     
+    # --- VIDEO KAYIT AYARLARI (YENİ) ---
+    # Seçenekler: 'true' (her zaman), 'false' (hiçbir zaman), 'on_failure' (sadece hatalar)
+    RECORD_VIDEO = os.getenv("RECORD_VIDEO", "on_failure").lower()
+
     # --- SELENOID / GRID AYARLARI ---
     SELENIUM_REMOTE_URL = os.getenv("SELENIUM_REMOTE_URL") # Örn: http://localhost:4444/wd/hub
     

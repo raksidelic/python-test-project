@@ -1,7 +1,7 @@
 class TestData:
     VALID_USERS = [
         ("standard_user", "secret_sauce"),
-        ("problem_user", "secret_sauce"),
+        ("problem2_user", "secret2_sauce"),
         ("performance_glitch_user", "secret_sauce")
     ]
 
