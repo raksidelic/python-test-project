@@ -5,6 +5,7 @@ import allure
 import logging
 import os
 import json
+import docker
 import fcntl  # Linux'ta dosya kilitleme için (xdist uyumlu)
 from config import Config
 from utilities.db_client import DBClient
@@ -92,6 +93,74 @@ def driver(request):
             _register_video_for_deletion(video_name)
 
 def pytest_sessionfinish(session, exitstatus):
+    """
+    TOPLU KIYIM ZAMANI 💀
+    Tüm testler bittiğinde Master Node burayı çalıştırır.
+    """
+    if hasattr(session.config, 'workerinput'):
+        return
+
+    if not os.path.exists(CLEANUP_MANIFEST):
+        return
+
+    logger.info("🧹 [BATCH CLEANUP] Temizlik manifestosu okunuyor...")
+    
+    # Docker Client'ı başlat (requirements.txt içinde var)
+    try:
+        docker_client = docker.from_env()
+    except Exception as e:
+        logger.warning(f"Docker bağlantısı sağlanamadı: {e}")
+        docker_client = None
+    
+    deleted_count = 0
+    try:
+        with open(CLEANUP_MANIFEST, "r") as f:
+            lines = f.readlines()
+            
+        for line in lines:
+            try:
+                data = json.loads(line.strip())
+                video_file = data.get("video") # Örn: fe604...mp4
+                
+                file_path = os.path.join("/app/videos", video_file)
+                
+                # --- 2. SİSTEM SEVİYESİ SENKRONİZASYON (NO SLEEP) ---
+                # "Bir şekilde anlasın" dediğiniz yer burası:
+                # Rastgele uyumak yerine, o dosyayı yazan konteyneri bulup
+                # "İşin bitene kadar (kapanana kadar) buradayım" diyoruz.
+                if docker_client:
+                    try:
+                        # Şu an çalışan tüm konteynerleri tara
+                        for container in docker_client.containers.list():
+                            # Konteynerin özelliklerinde bizim dosya ismimiz geçiyor mu?
+                            # (Selenoid, dosya ismini Env veya Cmd olarak konteynere verir)
+                            if video_file in str(container.attrs):
+                                # Bulduk! Konteyner kapanana kadar blokla (Wait for Exit)
+                                # Bu bir sleep değildir, işletim sistemi sinyali bekler.
+                                container.wait()
+                                break
+                    except Exception as e:
+                        # Konteyner o sırada zaten gittiyse hata verebilir, sorun yok.
+                        pass
+                # ----------------------------------------------------
+
+                # Konteyner öldüğüne göre dosya artık diskte olmalı.
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    deleted_count += 1
+                else:
+                    logger.warning(f"⚠️ Dosya diskte bulunamadı: {video_file}")
+
+            except Exception as inner_e:
+                logger.warning(f"Satır işlenemedi: {inner_e}")
+                
+        if os.path.exists(CLEANUP_MANIFEST):
+             os.remove(CLEANUP_MANIFEST)
+             
+        logger.info(f"✅ [CLEANUP COMPLETE] Toplam {deleted_count} adet gereksiz video disken silindi.")
+        
+    except Exception as e:
+        logger.error(f"❌ Toplu silme işleminde hata: {e}")
     """
     TOPLU KIYIM ZAMANI 💀
     Tüm testler bittiğinde Master Node burayı çalıştırır.
