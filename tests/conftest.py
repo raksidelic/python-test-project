@@ -3,18 +3,20 @@
 import pytest
 import allure
 import logging
-import requests
+import os
+import json
+import fcntl  # Linux'ta dosya kilitleme için (xdist uyumlu)
 from config import Config
 from utilities.db_client import DBClient
 from utilities.driver_factory import DriverFactory
 
-# --- LOGGING KURULUMU ---
-# Global logger yerine modüle özel logger kullanımı
+# --- LOGGING ---
 logger = logging.getLogger("Conftest")
-
-# Selenium ve Urllib3'ün gürültülü loglarını sustur
 logging.getLogger("selenium").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+# Silinecek videoların tutulacağı Manifest Dosyası
+CLEANUP_MANIFEST = "/app/videos/cleanup_manifest.jsonl"
 
 @pytest.fixture(scope="session")
 def db_client():
@@ -22,62 +24,64 @@ def db_client():
     yield client
     client.close()
 
+def _register_video_for_deletion(video_name):
+    """
+    Worker'lar (paralel çalışanlar) silinecek dosyayı buraya yazar.
+    fcntl ile dosya kilitlenir, böylece veriler birbirine karışmaz.
+    """
+    entry = {"video": video_name, "action": "delete"}
+    try:
+        # 'a' modu ile append (ekleme) yapıyoruz
+        with open(CLEANUP_MANIFEST, "a") as f:
+            fcntl.flock(f, fcntl.LOCK_EX) # 🔒 KİLİTLE (Diğer workerlar bekler)
+            f.write(json.dumps(entry) + "\n")
+            fcntl.flock(f, fcntl.LOCK_UN) # 🔓 KİLİDİ AÇ
+    except Exception as e:
+        logger.error(f"Manifest dosyasına yazılamadı: {e}")
+
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
-    """
-    Test sonucunu (Pass/Fail) 'item' objesine kaydeder.
-    Bu bilgiye teardown aşamasında ihtiyacımız olacak.
-    """
     outcome = yield
     rep = outcome.get_result()
     setattr(item, "rep_" + rep.when, rep)
 
 @pytest.fixture(scope="function")
 def driver(request):
-    """
-    Driver Factory kullanarak tarayıcıyı ayağa kaldırır ve
-    test bitiminde akıllı video yönetimi yapar.
-    """
     test_name = request.node.name
     driver_instance = None
     
-    # --- 1. SETUP (BAŞLANGIÇ) ---
+    # 1. SETUP
     try:
         driver_instance = DriverFactory.get_driver(Config, test_name)
         driver_instance.implicitly_wait(Config.TIMEOUT)
         yield driver_instance
-    
     except Exception as e:
         logger.error(f"[SETUP HATA] Driver başlatılamadı: {e}")
         yield None
 
-    # --- 2. TEARDOWN (BİTİŞ) ---
+    # 2. TEARDOWN
     if driver_instance:
-        # Testin durumunu kontrol et
-        # request.node.rep_call.failed -> True ise test patlamıştır
+        # Test durumunu kontrol et
         is_failed = False
         node = request.node
         if getattr(node, 'rep_call', None) and node.rep_call.failed:
             is_failed = True
-            
-            # Hata anında ekran görüntüsü al
             try:
                 allure.attach(
                     driver_instance.get_screenshot_as_png(), 
                     name="Hata_Goruntusu", 
                     attachment_type=allure.attachment_type.PNG
                 )
-            except Exception as e:
-                logger.warning(f"Screenshot alınamadı: {e}")
+            except:
+                pass
 
-        # Driver'ı kapat (Bu işlem videoyu Selenoid tarafında diske yazar)
+        # Driver'ı kapat (Selenoid videoyu diske yazar)
         driver_instance.quit()
 
-        # --- 3. AKILLI VIDEO TEMİZLİĞİ ---
-        # Eğer mod 'on_failure' ise ve test BAŞARILI ise videoyu silmeliyiz.
-        # DriverFactory'de driver objesine yapıştırdığımız 'video_name'i alıyoruz.
+        # 3. AKILLI KAYIT (JSON'a Yazma)
         video_name = getattr(driver_instance, 'video_name', None)
         
+        # Eğer 'on_failure' modundaysak ve test BAŞARILI ise -> Listeye ekle
         should_delete = (
             Config.RECORD_VIDEO == "on_failure" 
             and not is_failed 
@@ -85,30 +89,44 @@ def driver(request):
         )
 
         if should_delete:
-            _delete_video_from_selenoid(video_name)
+            _register_video_for_deletion(video_name)
 
-def _delete_video_from_selenoid(video_name):
+def pytest_sessionfinish(session, exitstatus):
     """
-    Selenoid API kullanarak gereksiz (başarılı test) videosunu siler.
-    Endpoint: DELETE http://<selenoid-host>:4444/video/<filename>
+    TOPLU KIYIM ZAMANI 💀
+    Tüm testler bittiğinde Master Node burayı çalıştırır.
     """
-    if not Config.SELENIUM_REMOTE_URL:
+    # Sadece Master Node çalıştırsın (Workerlar çalıştırmasın)
+    if hasattr(session.config, 'workerinput'):
         return
 
+    if not os.path.exists(CLEANUP_MANIFEST):
+        return
+
+    logger.info("🧹 [BATCH CLEANUP] Temizlik manifestosu okunuyor...")
+    
+    deleted_count = 0
     try:
-        # Remote URL genellikle "http://host:4444/wd/hub" formatındadır.
-        # "/wd/hub" kısmını atıp base url'i (http://host:4444) alıyoruz.
-        base_url = Config.SELENIUM_REMOTE_URL.split("/wd/hub")[0]
-        delete_url = f"{base_url}/video/{video_name}"
-        
-        response = requests.delete(delete_url, timeout=5)
-        
-        if response.status_code == 200:
-            logger.info(f"🗑️ [CLEANUP] Başarılı test videosu silindi: {video_name}")
-        elif response.status_code == 404:
-            logger.warning(f"⚠️ Video bulunamadı (Zaten silinmiş olabilir): {video_name}")
-        else:
-            logger.warning(f"⚠️ Video silinemedi. Kod: {response.status_code} | URL: {delete_url}")
+        with open(CLEANUP_MANIFEST, "r") as f:
+            lines = f.readlines()
             
+        for line in lines:
+            try:
+                data = json.loads(line.strip())
+                video_file = data.get("video")
+                
+                # Dosya yolu: /app/videos/test_x.mp4
+                file_path = os.path.join("/app/videos", video_file)
+                
+                if os.path.exists(file_path):
+                    os.remove(file_path) # 🔥 API YOK, DİREKT SİLME VAR
+                    deleted_count += 1
+            except Exception as inner_e:
+                logger.warning(f"Satır işlenemedi: {inner_e}")
+                
+        # İş bittikten sonra manifestoyu da temizle
+        os.remove(CLEANUP_MANIFEST)
+        logger.info(f"✅ [CLEANUP COMPLETE] Toplam {deleted_count} adet gereksiz video disken silindi.")
+        
     except Exception as e:
-        logger.error(f"❌ Video silme işlemi sırasında hata: {e}")
+        logger.error(f"❌ Toplu silme işleminde hata: {e}")

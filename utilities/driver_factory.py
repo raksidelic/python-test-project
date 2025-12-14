@@ -87,14 +87,26 @@ class DriverFactory:
         options.set_capability("selenoid:options", selenoid_options)
         
         try:
-            logger.info(f"Remote bağlantı kuruluyor: {remote_url} | Video Kaydı: {should_record}")
+            logger.info(f"Remote bağlantı kuruluyor...")
             driver = webdriver.Remote(command_executor=remote_url, options=options)
             
-            # 3. Video ismini driver objesine yapıştır (conftest.py silebilsin diye)
-            driver.video_name = video_name if should_record else None
-            
-            logger.info(f"✅ Remote Driver başarıyla başlatıldı. Session ID: {driver.session_id}")
+            # --- AKILLI MANTIK (Smart Logic) ---
+            if should_record:
+                # Eğer yukarıda yorumu açtıysanız (key varsa), sizin verdiğiniz ismi kullanır.
+                if "videoName" in selenoid_options:
+                    final_video_name = selenoid_options["videoName"]
+                # Eğer yorum kapalıysa, Selenoid'in atadığı Session ID'yi kullanır.
+                else:
+                    final_video_name = f"{driver.session_id}.mp4"
+                
+                driver.video_name = final_video_name
+            else:
+                driver.video_name = None
+            # -----------------------------------
+
+            logger.info(f"✅ Driver başlatıldı. Video: {driver.video_name}")
             return driver
+        
         except Exception as e:
             logger.error(f"❌ Remote Driver başlatılamadı! Hata: {e}")
             raise e
