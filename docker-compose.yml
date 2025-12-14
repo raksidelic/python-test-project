@@ -24,13 +24,15 @@ services:
 
   # 2. SELENOID (Otomatik Mimari: Aerokube resmi imajı multi-arch'tır)
   selenoid:
-    image: aerokube/selenoid:latest-release
+    image: aerokube/selenoid:1.11.3
     container_name: selenoid
     # PLATFORM SATIRI YOK -> Docker ev sahibi mimarisini otomatik seçer
     volumes:
       - "./config:/etc/selenoid"
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./logs:/opt/selenoid/logs"
+    environment:
+      - DOCKER_API_VERSION=1.45
     # Dinamik Tarayıcı Dosyası Seçimi (start_tests.py burayı doldurur)
     command: ["-conf", "/etc/selenoid/${BROWSERS_JSON}", "-log-output-dir", "/opt/selenoid/logs", "-container-network", "shared-network", "-limit", "10"]
     ports:
@@ -40,9 +42,8 @@ services:
 
   # 3. SELENOID UI (Otomatik Mimari: Aerokube resmi imajı multi-arch'tır)
   selenoid-ui:
-    image: aerokube/selenoid-ui:latest-release
+    image: aerokube/selenoid-ui:1.10.11
     container_name: selenoid-ui
-    # PLATFORM SATIRI SİLİNDİ -> Artık M3'te ARM, Intel'de Intel çalışır.
     depends_on:
       - selenoid
     ports:
