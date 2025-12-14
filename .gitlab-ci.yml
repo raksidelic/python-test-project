@@ -2,11 +2,21 @@ stages:
   - test
   - report
 
+spec:
+  inputs:
+    video_mode:
+      description: "Video Kayıt Stratejisi"
+      default: "on_failure"
+      options:
+        - "true"
+        - "false"
+        - "on_failure"
+
 variables:
   # Python'un bytecode (.pyc) oluşturmasını engeller
   PYTHONDONTWRITEBYTECODE: "1"
   # Video ve Screenshot ayarları
-  RECORD_VIDEO: "on_failure"
+  RECORD_VIDEO: $[[ inputs.video_mode ]]
   TAKE_SCREENSHOT: "true"
 
 run_tests:
@@ -25,6 +35,8 @@ run_tests:
     - echo "ARANGO_USER=$ARANGO_USER" >> .env
     - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
     - echo "Ortam dosyası oluşturuldu."
+
+    - echo "RECORD_VIDEO=$RECORD_VIDEO" >> .env
     
     # 3. AĞ AYARLARI
     - docker network create shared-network || true
