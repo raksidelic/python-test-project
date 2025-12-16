@@ -22,7 +22,7 @@ variables:
 
 run_tests:
   stage: test
-  image: docker:latest
+  image: docker:29.1.2
   tags:
     - mac-m3-runner
   
