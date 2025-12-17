@@ -24,7 +24,7 @@ def main():
     elif any(x in arch for x in ["x86_64", "amd64", "i386", "i686"]):
         print("✅ Tespit: Intel/AMD Mimarisi")
         browsers_json = "browsers_intel.json"
-        auto_worker_count = "4" # Intel varsayılanı
+        auto_worker_count = "2" # Intel varsayılanı
         
         # İmaj hazırlığı...
         subprocess.run(["docker", "pull", "selenoid/vnc:chrome_120.0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
