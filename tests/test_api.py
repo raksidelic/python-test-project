@@ -34,7 +34,7 @@ class TestAPI:
 
     @allure.story("Yeni Post Oluşturma (POST)")
     @pytest.mark.parametrize("title, body, userId", [
-        ("Finom Test", "QA Lead Task", 1),
+        ("Company Test", "QA Lead Task", 1),
         ("Python Otomasyon", "API Testing", 1)
     ])
     def test_create_post(self, title, body, userId):
