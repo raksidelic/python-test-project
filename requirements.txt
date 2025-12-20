@@ -10,3 +10,7 @@ pytest-xdist
 docker
 psycopg2-binary
 Appium-Python-Client
+eyes-selenium
+google-genai
+markdown
+openai

@@ -11,13 +11,19 @@ services:
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
 
-      # POSTGRES ENJEKSİYONU (Harici Servise Bağlantı)
-      # Burada şifre yazmaz, sadece .env referansı vardır.
+      # POSTGRES ENJEKSİYONU
       - POSTGRESQL_HOST=${POSTGRESQL_HOST}
       - POSTGRESQL_PORT=${POSTGRESQL_PORT}
       - POSTGRESQL_DB=${POSTGRESQL_DB}
       - POSTGRESQL_USER=${POSTGRESQL_USER}
       - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+
+      # AI
+      - AI_PROVIDER=${AI_PROVIDER}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - OPENAI_MODEL=${OPENAI_MODEL}
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
@@ -34,7 +40,6 @@ services:
   selenoid:
     image: aerokube/selenoid:1.11.3
     container_name: selenoid
-    # PLATFORM SATIRI YOK -> Docker ev sahibi mimarisini otomatik seçer
     volumes:
       - "./config:/etc/selenoid"
       - "/var/run/docker.sock:/var/run/docker.sock"

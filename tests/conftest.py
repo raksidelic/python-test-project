@@ -9,6 +9,8 @@ from utilities.db_client import DBClient
 from utilities.sql_client import SQLClient 
 from utilities.driver_factory import DriverFactory
 from utilities.video_manager import VideoManager
+from utilities.ai_debugger import AIDebugger
+from utilities.report_helper import ReportHelper
 
 logger = logging.getLogger("Conftest")
 logging.getLogger("selenium").setLevel(logging.WARNING)
@@ -35,12 +37,6 @@ def sql_client():
         
     yield client
     client.close()
-
-@pytest.hookimpl(tryfirst=True, hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    outcome = yield
-    rep = outcome.get_result()
-    setattr(item, "rep_" + rep.when, rep)
 
 @pytest.fixture(scope="function")
 def driver(request):
@@ -100,3 +96,33 @@ def driver(request):
 def pytest_sessionfinish(session, exitstatus):
     if hasattr(session.config, 'workerinput'): return
     VideoManager.post_process_cleanup()
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, "rep_" + rep.when, rep)
+
+    # --- DEBUGGER ENTEGRASYONU ---
+    if rep.when == "call" and rep.failed:
+        long_repr = str(rep.longrepr)
+        error_extract = long_repr[-1500:] if len(long_repr) > 1500 else long_repr
+        
+        # 1. Analizi Al (Logic Layer)
+        ai_analysis_md = AIDebugger.analyze_error(error_extract)
+        
+        if ai_analysis_md is None:
+            return 
+
+        # 2. HTML'e Çevir
+        styled_html = ReportHelper.convert_to_html(
+            ai_analysis_md, 
+            model_name=AIDebugger.CURRENT_MODEL_NAME
+        )
+        
+        # 3. Raporla
+        allure.attach(
+            styled_html, 
+            name="🤖 AI Analiz Raporu", 
+            attachment_type=allure.attachment_type.HTML
+        )

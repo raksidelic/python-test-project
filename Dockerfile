@@ -1,6 +1,6 @@
 # Dockerfile:
 
-FROM python:3.14
+FROM python:3.13.11-slim
 
 # Çalışma klasörü
 WORKDIR /app
