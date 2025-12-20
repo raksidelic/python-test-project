@@ -35,6 +35,11 @@ run_tests:
     - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" >> .env
     - echo "ARANGO_USER=$ARANGO_USER" >> .env
     - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
+
+    # AI
+    - echo "AI_PROVIDER=$AI_PROVIDER" >> .env
+    - echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env
+    - echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
     
     # Dropdown'dan seçilen değeri .env'ye yazıyoruz
     - echo "RECORD_VIDEO=$RECORD_VIDEO" >> .env
