@@ -8,29 +8,29 @@ class DBClient:
         self.db = None
         self.logger = logging.getLogger("DBClient")
         
-        # --- DEBUG LOGLARI ---
-        print(f"\n[DEBUG] DBClient Başlatılıyor... Hedef: {Config.ARANGO_URL}")
+        # --- DEBUG LOGS ---
+        print(f"\n[DEBUG] Initializing DBClient... Target: {Config.ARANGO_URL}")
 
     def _connect(self):
         """
-        AKILLI BAĞLANTI YÖNETİCİSİ (State-Based Logic):
-        1. Mevcut bağlantı var mı? Varsa 'Ping' at (Zombie Check).
-        2. Ping başarısızsa veya hiç bağlantı yoksa, sıfırdan 'Fresh Connection' kur.
+        SMART CONNECTION MANAGER (State-Based Logic):
+        1. Is there an existing connection? If yes, 'Ping' it (Zombie Check).
+        2. If ping fails or no connection exists, establish a 'Fresh Connection'.
         """
-        # --- ADIM 1: ZOMBIE CHECK (Mevcut bağlantıyı kontrol et) ---
+        # --- STEP 1: ZOMBIE CHECK (Check existing connection) ---
         if self.db is not None:
             try:
                 self.db.properties() # Ping
-                return # Bağlantı sağlıklı, çık.
+                return # Connection is healthy, exit.
             except Exception:
-                print("[DEBUG] ⚠️ Mevcut bağlantı ölü (Zombie), yenileniyor...")
+                print("[DEBUG] ⚠️ Existing connection is dead (Zombie), reconnecting...")
                 self.db = None
                 self.client = None # Reset
 
-        # --- ADIM 2: FRESH CONNECT (Sıfırdan bağlan) ---
+        # --- STEP 2: FRESH CONNECT (Connect from scratch) ---
         try:
-            self.logger.info(f"DB Bağlantısı deneniyor: {Config.ARANGO_URL}")
-            # Client nesnesini sıfırdan yarat
+            self.logger.info(f"Attempting DB connection: {Config.ARANGO_URL}")
+            # Create Client object from scratch
             self.client = ArangoClient(hosts=Config.ARANGO_URL)
             
             temp_db = self.client.db(
@@ -39,28 +39,28 @@ class DBClient:
                 password=Config.ARANGO_PASS
             )
             
-            # HANDSHAKE (Canlılık ve Yetki Kontrolü)
+            # HANDSHAKE (Liveness and Auth Check)
             temp_db.properties()
             
             self.db = temp_db
-            print("[DEBUG] BAĞLANTI BAŞARILI (Fresh Connect)! 🎉")
-            self.logger.info("DB Bağlantısı Başarılı.")
+            print("[DEBUG] CONNECTION SUCCESSFUL (Fresh Connect)! 🎉")
+            self.logger.info("DB connection successful.")
             
         except Exception as e:
-            print(f"[DEBUG] ❌ Bağlantı Başarısız: {e}")
-            self.logger.error(f"DB Bağlantı Hatası: {e}")
+            print(f"[DEBUG] ❌ Connection failed: {e}")
+            self.logger.error(f"DB connection error: {e}")
             self.db = None
             self.client = None
 
     def is_connected(self):
         """
-        Fixture için kontrol metodu.
+        Check method for fixture usage.
         """
         self._connect()
         return self.db is not None
 
     def get_error_message(self, error_code, lang="message_en"):
-        # Bağlantı garantisi (Zombie ise yeniler)
+        # Connection guarantee (Refreshes if Zombie)
         self._connect()
 
         if self.db is None:
@@ -74,8 +74,8 @@ class DBClient:
             result = [doc for doc in cursor]
             return result[0] if result else "Unknown Error Code"
         except Exception as e:
-            self.logger.error(f"AQL Sorgu Hatası: {e}")
-            # Hata aldıysak bağlantıyı sonraki sefer için resetleyelim
+            self.logger.error(f"AQL query error: {e}")
+            # If error occurred, reset connection for next time
             self.db = None 
             return "DB Query Error"
 

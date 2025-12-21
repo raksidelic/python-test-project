@@ -10,8 +10,8 @@ from config import Config
 class BasePage:
     def __init__(self, driver):
         self.driver = driver
-        # BEST PRACTICE: Class ismini alarak dinamik logger oluşturur.
-        # Örn: LoginPage kullanıyorsa loglarda [LoginPage] yazar.
+        # BEST PRACTICE: Creates dynamic logger using Class name.
+        # Ex: If using LoginPage, logs will show [LoginPage].
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def find(self, locator):
@@ -19,33 +19,33 @@ class BasePage:
             EC.visibility_of_element_located(locator)
         )
 
-    @allure.step("Tıklanıyor: {locator}")
+    @allure.step("Clicking on: {locator}")
     def click(self, locator):
         self.find(locator).click()
-        self.take_screenshot(f"Tıklandı: {locator}")
-        # --- LOGLAMA ---
-        self.logger.info(f"TIKLANDI: {locator}")
+        self.take_screenshot(f"Clicked: {locator}")
+        # --- LOGGING ---
+        self.logger.info(f"CLICKED: {locator}")
 
-    @allure.step("Metin yazılıyor: {text}")
+    @allure.step("Typing text: {text}")
     def send_text(self, locator, text):
         element = self.find(locator)
         element.clear()
         element.send_keys(text)
-        self.take_screenshot(f"Yazıldı: {text}")
+        self.take_screenshot(f"Typed: {text}")
         
-        # --- LOGLAMA (Şifre Maskeleme) ---
-        # Eğer locator isminde 'password' geçiyorsa log dosyasına ***** yaz
+        # --- LOGGING (Password Masking) ---
+        # If 'password' is in the locator name, mask it with ***** in logs.
         log_text = "*****" if "password" in str(locator).lower() else text
-        self.logger.info(f"YAZILDI: '{log_text}' -> {locator}")
+        self.logger.info(f"TYPED: '{log_text}' -> {locator}")
 
     def get_url(self):
         url = self.driver.current_url
-        self.logger.info(f"URL ALINDI: {url}")
+        self.logger.info(f"URL RETRIEVED: {url}")
         return url
 
-    # --- YARDIMCI METOD ---
+    # --- HELPER METHOD ---
     def take_screenshot(self, name):
-        """Rapora ekran görüntüsü ekleyen merkezi fonksiyon"""
+        """Centralized function that attaches a screenshot to the report"""
         allure.attach(
             self.driver.get_screenshot_as_png(),
             name=name,

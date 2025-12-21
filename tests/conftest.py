@@ -20,9 +20,9 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 def db_client():
     client = DBClient()
 
-    # KORUMA KALKANI: Bağlantı yoksa testi atla (SKIP)
+    # SHIELD: If no connection, skip the test (SKIP)
     if not client.is_connected():
-        pytest.skip("⚠️ ArangoDB bağlantısı kurulamadı! NoSQL bağımlı testler atlanıyor.")
+        pytest.skip("⚠️ Unable to establish ArangoDB connection! NoSQL-dependent tests are skipped.")
 
     yield client
     client.close()
@@ -31,9 +31,9 @@ def db_client():
 def sql_client():
     client = SQLClient()
     
-    # KORUMA KALKANI: Bağlantı yoksa testi atla (SKIP)
+    # SHIELD: If no connection, skip the test (SKIP)
     if not client.is_connected():
-        pytest.skip("⚠️ PostgreSQL bağlantısı kurulamadı! SQL bağımlı testler atlanıyor.")
+        pytest.skip("⚠️ Unable to establish PostgreSQL connection! SQL-dependent tests are skipped.")
         
     yield client
     client.close()
@@ -43,7 +43,7 @@ def driver(request):
     test_name = request.node.name
     node_id = request.node.nodeid
     
-    # Her test için benzersiz ID
+    # Unique ID for each test
     execution_id = str(uuid.uuid4())
     
     driver_instance = None
@@ -53,7 +53,7 @@ def driver(request):
         driver_instance.implicitly_wait(Config.TIMEOUT)
         yield driver_instance
     except Exception as e:
-        logger.error(f"[SETUP HATA] Driver başlatılamadı: {e}")
+        logger.error(f"[SETUP ERROR] Driver could not be initialized: {e}")
         yield None
 
     if driver_instance:
@@ -62,7 +62,7 @@ def driver(request):
         if getattr(node, 'rep_call', None) and node.rep_call.failed:
             is_failed = True
             try:
-                allure.attach(driver_instance.get_screenshot_as_png(), name="Hata_Goruntusu", attachment_type=allure.attachment_type.PNG)
+                allure.attach(driver_instance.get_screenshot_as_png(), name="Error_Screenshot", attachment_type=allure.attachment_type.PNG)
             except: pass
 
         video_name = getattr(driver_instance, 'video_name', None)
@@ -71,15 +71,15 @@ def driver(request):
         
         try:
             session_id = driver_instance.session_id
-            # UUID Etiketi ile ID bulma
+            # Find container ID using UUID Label
             if video_name:
                 container_id = VideoManager.get_container_id_by_uuid(execution_id)
                 if container_id:
-                    logger.info(f"✅ Konteyner Bulundu (UUID): {container_id[:12]}")
+                    logger.info(f"✅ Container Found (UUID): {container_id[:12]}")
                 else:
-                    logger.warning(f"⚠️ Konteyner UUID ile bulunamadı! ExecID: {execution_id}")
+                    logger.warning(f"⚠️ Container could not be found by UUID! ExecID: {execution_id}")
         except Exception as e:
-            logger.error(f"Teardown Hatası: {e}")
+            logger.error(f"Teardown Error: {e}")
 
         driver_instance.quit()
 
@@ -103,26 +103,26 @@ def pytest_runtest_makereport(item, call):
     rep = outcome.get_result()
     setattr(item, "rep_" + rep.when, rep)
 
-    # --- DEBUGGER ENTEGRASYONU ---
+    # --- DEBUGGER INTEGRATION ---
     if rep.when == "call" and rep.failed:
         long_repr = str(rep.longrepr)
         error_extract = long_repr[-1500:] if len(long_repr) > 1500 else long_repr
         
-        # 1. Analizi Al (Logic Layer)
+        # 1. Get Analysis (Logic Layer)
         ai_analysis_md = AIDebugger.analyze_error(error_extract)
         
         if ai_analysis_md is None:
             return 
 
-        # 2. HTML'e Çevir
+        # 2. Convert to HTML
         styled_html = ReportHelper.convert_to_html(
             ai_analysis_md, 
             model_name=AIDebugger.CURRENT_MODEL_NAME
         )
         
-        # 3. Raporla
+        # 3. Report
         allure.attach(
             styled_html, 
-            name="🤖 AI Analiz Raporu", 
+            name="🤖 AI Analysis Report", 
             attachment_type=allure.attachment_type.HTML
         )
