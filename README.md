@@ -1,4 +1,4 @@
-# 🚀 Finom.co - Next-Gen QA Automation Framework
+# 🚀 Next-Gen QA Automation Framework
 
 
 ## 📋 Executive Summary
@@ -54,7 +54,5 @@ It goes beyond traditional automation by integrating **Self-Healing Infrastructu
 
 Süleyman Onur Şahin
 Fullstack Software QA Engineer
-Portfolio Focus: FinTech, AI-Augmented Automation, Scalable Infrastructure
+Portfolio Focus: AI-Augmented Automation, Scalable Infrastructure
 Contact: https://linkedin.com/in/suleymanonursahin/
-
-Built with ❤️ for Finom.
