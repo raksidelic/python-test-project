@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 class FinomLandingLocators:
     # --- Cookie Consent ---
     # Any button containing "Allow all" or "Accept"
-    COOKIE_ACCEPT_BUTTON = (By.XPATH, "//button[contains(text(), 'Allow all') or contains(text(), 'Accept') or contains(text(), 'Alle akzeptieren')]")
+    COOKIE_ACCEPT_BUTTON = (By.XPATH, "//button[@data-test='cookie-finom-card-accept-all']")
 
     # --- Country Selection ---
     # Country selection header (Used for wait condition)

@@ -1,5 +1,3 @@
-# conftest.py:
-
 import pytest
 import allure
 import logging
@@ -63,7 +61,8 @@ def driver(request):
             is_failed = True
             try:
                 allure.attach(driver_instance.get_screenshot_as_png(), name="Error_Screenshot", attachment_type=allure.attachment_type.PNG)
-            except: pass
+            except Exception:
+                pass
 
         video_name = getattr(driver_instance, 'video_name', None)
         session_id = None
@@ -86,15 +85,19 @@ def driver(request):
         if video_name:
             mode = Config.RECORD_VIDEO.lower()
             should_keep = False
-            if mode == "true": should_keep = True
-            elif mode == "on_failure" and is_failed: should_keep = True
-            elif mode == "on_success" and not is_failed: should_keep = True
+            if mode == "true":
+                should_keep = True
+            elif mode == "on_failure" and is_failed:
+                should_keep = True
+            elif mode == "on_success" and not is_failed:
+                should_keep = True
             
             action = "keep" if should_keep else "delete"
             VideoManager.log_decision(node_id, test_name, session_id, container_id, video_name, action)
 
 def pytest_sessionfinish(session, exitstatus):
-    if hasattr(session.config, 'workerinput'): return
+    if hasattr(session.config, 'workerinput'):
+        return
     VideoManager.post_process_cleanup()
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

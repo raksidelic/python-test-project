@@ -12,6 +12,7 @@ logs/
 *.log
 *.html
 .testmondata
+.ruff_cache
 
 # --- Ortam ve Editör ---
 venv_pytest/

@@ -1,3 +1,5 @@
+# utilities/ai_debugger.py
+
 import os
 
 # Make dependencies optional
@@ -67,9 +69,11 @@ class AIDebugger:
 
     @staticmethod
     def _analyze_with_gemini(prompt):
-        if not genai: return "❌ 'google-genai' library missing!"
+        if not genai:
+            return "❌ 'google-genai' library missing!"
         api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key: return "⚠️ GEMINI_API_KEY missing!"
+        if not api_key:
+            return "⚠️ GEMINI_API_KEY missing!"
 
         try:
             model = os.getenv("GEMINI_MODEL", AIDebugger.DEFAULT_GEMINI_MODEL)
@@ -84,9 +88,11 @@ class AIDebugger:
 
     @staticmethod
     def _analyze_with_openai(system_prompt, user_prompt):
-        if not openai: return "❌ 'openai' library missing!"
+        if not openai:
+            return "❌ 'openai' library missing!"
         api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key: return "⚠️ OPENAI_API_KEY missing!"
+        if not api_key:
+            return "⚠️ OPENAI_API_KEY missing!"
 
         try:
             model = os.getenv("OPENAI_MODEL", AIDebugger.DEFAULT_OPENAI_MODEL)
