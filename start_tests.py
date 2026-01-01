@@ -4,7 +4,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-import shutil
 
 # --- DOTENV ---
 try:
@@ -177,7 +176,7 @@ def main():
     # -------------------------------------------------
 
     if browsers_json and video_image:
-        print(f"\n🚀 Starting Test Environment...")
+        print("\n🚀 Starting Test Environment...")
         print(f"   ⚙️ Cleanup Policy (KEEP_CONTAINERS): {keep_containers_policy}")
         print(f"   📄 Browser Config : {browsers_json}")
         print(f"   🎥 Video Image    : {video_image}")

@@ -6,7 +6,6 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from appium import webdriver as appium_driver
 from appium.options.android import UiAutomator2Options
-from appium.options.ios import XCUITestOptions
 
 # Logger Definition
 logger = logging.getLogger("DriverFactory")

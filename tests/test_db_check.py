@@ -1,4 +1,3 @@
-import pytest
 import allure
 
 @allure.feature("Infrastructure Checks")

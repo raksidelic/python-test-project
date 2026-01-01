@@ -4,8 +4,7 @@ import fcntl
 import glob
 import logging
 import docker
-from docker.errors import NotFound, APIError
-from config import Config
+from docker.errors import NotFound
 
 class VideoManager:
     """
