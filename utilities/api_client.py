@@ -67,7 +67,7 @@ class APIClient:
         try:
             res_body_str = json.dumps(response.json(), indent=4, ensure_ascii=False)
             attach_type = AttachmentType.JSON
-        except:
+        except Exception:
             res_body_str = response.text
             attach_type = AttachmentType.TEXT
 

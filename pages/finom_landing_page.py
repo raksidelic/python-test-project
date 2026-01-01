@@ -29,7 +29,7 @@ class FinomLandingPage(BasePage):
             self.logger.info("Cookie banner accepted.")
             self.take_screenshot("Cookie Accepted")
             print("Cookie banner closed.")
-        except:
+        except Exception:
             self.logger.info("Cookie banner did not appear.")
             self.take_screenshot("Cookie Not Visible")
             print("Cookie banner did not appear, continuing.")
@@ -62,7 +62,7 @@ class FinomLandingPage(BasePage):
             self.logger.info(f"Selecting language: {language_code}")
             lang_element.click()
             self.take_screenshot(f"Language Selected - {language_code}")
-        except:
+        except Exception:
             self.logger.error(f"Failed to select language: {language_code}")
             self.take_screenshot("ERROR - Language Selection Failed")
             raise Exception(f"Could not select language {language_code} or menu did not appear.")

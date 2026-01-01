@@ -55,8 +55,10 @@ class VideoManager:
     def _match_json_to_test(json_data, target_node_id):
         full_name = json_data.get("fullName", "")
         norm_target = target_node_id.replace("/", ".").replace("::", ".")
-        if full_name and full_name in norm_target: return True
-        if json_data.get("name", "") in target_node_id: return True
+        if full_name and full_name in norm_target:
+            return True
+        if json_data.get("name", "") in target_node_id:
+            return True
         return False
 
     @staticmethod
@@ -69,13 +71,22 @@ class VideoManager:
                     if VideoManager._match_json_to_test(data, node_id):
                         video_att = {"name": "Test Video", "source": video_filename, "type": "video/mp4"}
                         target_step = data.get("afters", [])[-1] if data.get("afters") else data
-                        if "attachments" not in target_step: target_step["attachments"] = []
+                        
+                        if "attachments" not in target_step:
+                            target_step["attachments"] = []
+                        
                         if not any(a['source'] == video_filename for a in target_step.get("attachments", [])):
-                             if isinstance(target_step, list): data.setdefault("attachments", []).append(video_att)
-                             else: target_step["attachments"].append(video_att)
-                        f.seek(0); json.dump(data, f, indent=4); f.truncate()
+                             if isinstance(target_step, list):
+                                 data.setdefault("attachments", []).append(video_att)
+                             else:
+                                 target_step["attachments"].append(video_att)
+                        
+                        f.seek(0)
+                        json.dump(data, f, indent=4)
+                        f.truncate()
                         return
-            except: continue
+            except Exception:
+                continue
 
     @staticmethod
     def _block_until_container_removed(container_id):
@@ -85,7 +96,8 @@ class VideoManager:
         Locks code execution until 'destroy' (full removal) signal is received from Docker Daemon.
         This ensures Python never says 'Done' before Selenoid says 'REMOVED'.
         """
-        if not container_id: return
+        if not container_id:
+            return
         client = docker.from_env()
         
         try:
@@ -121,16 +133,20 @@ class VideoManager:
 
     @staticmethod
     def post_process_cleanup():
-        if not os.path.exists(VideoManager.CLEANUP_MANIFEST): return
+        if not os.path.exists(VideoManager.CLEANUP_MANIFEST):
+            return
 
         VideoManager.logger.info("🧹 [POST-PROCESS] Starting...")
         manifest_entries = []
         try:
             with open(VideoManager.CLEANUP_MANIFEST, "r") as f:
                 for line in f:
-                    try: manifest_entries.append(json.loads(line.strip()))
-                    except: pass
-        except: pass
+                    try:
+                        manifest_entries.append(json.loads(line.strip()))
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
         # 1. Waiting Phase (Destroy Event)
         unique_containers = {e.get("container_id") for e in manifest_entries if e.get("container_id")}
@@ -147,8 +163,12 @@ class VideoManager:
                 processed += 1
             elif entry.get("action") == "delete":
                 if os.path.exists(f_path):
-                    try: os.remove(f_path); deleted += 1
-                    except: pass
+                    try:
+                        os.remove(f_path)
+                        deleted += 1
+                    except Exception:
+                        pass
 
-        if os.path.exists(VideoManager.CLEANUP_MANIFEST): os.remove(VideoManager.CLEANUP_MANIFEST)
+        if os.path.exists(VideoManager.CLEANUP_MANIFEST):
+            os.remove(VideoManager.CLEANUP_MANIFEST)
         VideoManager.logger.info(f"✅ Done. Added to Report: {processed} | Deleted: {deleted}")
