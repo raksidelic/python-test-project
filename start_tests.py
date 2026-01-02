@@ -1,3 +1,5 @@
+# start_tests.py:
+
 import platform
 import os
 import subprocess
@@ -202,7 +204,7 @@ def main():
             # 2. Worker Cleanup (Aggressive)
             # Deletes browser/video leftovers from old sessions.
             force_clean_cmd = "docker ps -a --format '{{.ID}} {{.Image}}' | grep -E 'selenoid|seleniarm' | grep -v 'aerokube' | awk '{print $1}' | xargs docker rm -f 2>/dev/null"
-            subprocess.run(force_clean_cmd, shell=True)
+            subprocess.run(force_clean_cmd, shell=True) # nosec
             
             print("🎬 Starting Containers...")
             result = subprocess.run(
@@ -259,7 +261,7 @@ def main():
             print("🚿 Cleaning workers...")
             try:
                 force_clean_cmd = "docker ps -a --format '{{.ID}} {{.Image}}' | grep -E 'selenoid|seleniarm' | grep -v 'aerokube' | awk '{print $1}' | xargs docker rm -f 2>/dev/null"
-                subprocess.run(force_clean_cmd, shell=True)
+                subprocess.run(force_clean_cmd, shell=True) # nosec
                 print("✨ Cleanup complete.")
             except Exception:
                 pass
