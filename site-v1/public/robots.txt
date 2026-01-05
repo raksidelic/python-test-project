@@ -4,4 +4,4 @@ Disallow: /nogooglebot/
 User-agent: *
 Allow: /
 
-Sitemap: https://up-start-finance-66b015.teleporthq.app/sitemap.xml
+Sitemap: https://up-start-finance-7j5wbz.teleporthq.app/sitemap.xml

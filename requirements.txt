@@ -17,3 +17,6 @@ markdown
 openai
 ruff
 bandit
+Pillow
+ollama
+groq
