@@ -35,12 +35,31 @@ services:
     command: >
       sh -c "pytest -n ${WORKER_COUNT:-2} 
       --alluredir=allure-results 
-      --clean-alluredir 
       ${TARGET_TESTS}"
     networks:
       - shared-network
 
-  # 2. SELENOID (Automatic architecture: official Aerokube image is multi-arch)
+  # 2. CYPRESS
+# --- YENİ CYPRESS SERVİSİ ---
+  cypress-tests:
+    image: cypress/included:13.6.3
+    container_name: cypress-runner
+    # Proje dosyalarını içeri aktarıyoruz
+    volumes:
+      - ./:/e2e
+      - ./allure-results:/e2e/allure-results
+    working_dir: /e2e
+    
+    # [ÇÖZÜM] Entrypoint'i boşaltıp varsayılanı eziyoruz
+    entrypoint: []
+    
+    # Komutu tek bir string olarak Bash'e veriyoruz (En güvenli yöntem)
+    command: /bin/bash -c "npm install && npm run cy:run"
+    
+    networks:
+      - shared-network
+
+  # 3. SELENOID (Automatic architecture: official Aerokube image is multi-arch)
   selenoid:
     image: aerokube/selenoid:1.11.3
     container_name: selenoid
@@ -59,7 +78,7 @@ services:
     networks:
       - shared-network
 
-  # 3. SELENOID UI (Automatic architecture: official Aerokube image is multi-arch)
+  # 4. SELENOID UI (Automatic architecture: official Aerokube image is multi-arch)
   selenoid-ui:
     image: aerokube/selenoid-ui:1.10.11
     container_name: selenoid-ui

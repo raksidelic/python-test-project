@@ -1,0 +1,13 @@
+{
+  "name": "cypress-native-integration",
+  "version": "1.0.0",
+  "description": "Native Cypress Integration",
+  "scripts": {
+    "cy:run": "cypress run --browser electron --env allure=true"
+  },
+  "devDependencies": {
+    "cypress": "13.6.3",
+    "typescript": "^5.0.0",
+    "@mmisty/cypress-allure-adapter": "^3.0.0"
+  }
+}
