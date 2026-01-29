@@ -6,7 +6,7 @@ load_dotenv()
 class Config:
     # --- ENVIRONMENT SETTINGS ---
     ENV = os.getenv("ENV", "STAGE").upper()
-    BASE_URL = os.getenv("BASE_URL", "https://www.insiderone.com")
+    BASE_URL = os.getenv("BASE_URL", "https://www.test.com")
     TIMEOUT = int(os.getenv("TIMEOUT", 10))
 
     # --- PLATFORM SELECTION ---

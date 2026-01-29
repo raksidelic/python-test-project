@@ -16,6 +16,7 @@ logs/
 
 # --- Ortam ve Editör ---
 local_files
+case_studies
 site-v1/
 venv_pytest/
 venv/
